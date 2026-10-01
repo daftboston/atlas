@@ -25,7 +25,7 @@ Run lint and typecheck before declaring any task done.
 
 ## Navigation & Routing
 
-- Use **Expo Router** for all navigation. Routes live in `src/app/` — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils) outside `src/app/`.
+- Use **Expo Router** for all navigation. Routes live in `app/` (repo root) — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils, tests) outside `app/`.
 - Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
 - Docs: https://docs.expo.dev/router/introduction.md
 
@@ -39,3 +39,14 @@ Docs: https://docs.expo.dev/eas/index.md
 - If `ios/` and `android/` directories do not exist, they are generated (Continuous Native Generation). Never create or edit them by hand — configure native behavior in `app.json` and config plugins.
 - Expo Go only includes its bundled native modules. After adding a library with native code, the app needs a development build: `npx expo run:ios|android` locally, or `eas build --profile development`.
 - Prefer recommended Expo modules over third-party libraries, and check your available skills before adding dependencies. Docs: https://docs.expo.dev/versions/latest/index.md
+
+## Atlas
+
+Project-specific rules for this repo (override the generic guidance above where they conflict).
+
+- **Simulator-first dev builds.** The owner develops on a Mac with no physical iPhone and no paid Apple Developer account. Target the iOS Simulator with a development build: `npx expo run:ios` locally, or `eas build --profile development` (the `development` profile builds for the simulator). Do not assume Expo Go, device signing, or TestFlight.
+- **Bundle ID** is `daft.atlas` (iOS and Android). Do not change it.
+- **FamilyControls / Screen Time is deferred.** These entitlements need a real device and a paid account. Keep any such functionality behind a stub/no-op interface until both are available; do not add the entitlement or native targets yet.
+- **Before declaring a task done**, run and pass: `npm run lint`, `npm run typecheck`, `npm test` (and `npm run doctor` after dependency changes).
+- **No new dependencies without lead approval.** When a dependency is approved, add it with `npx expo install`.
+- Node 22 (`.nvmrc`); install with `npm ci`.
