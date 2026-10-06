@@ -11,7 +11,7 @@ export default function ProgressScreen() {
     <View style={styles.container}>
       <Text style={styles.title}>Progress</Text>
       {!profile ? (
-        <Text style={styles.copy}>Choose a language on the Learn tab first.</Text>
+        <Text style={styles.copy}>Start your course on the Learn tab first.</Text>
       ) : saved.length === 0 ? (
         <Text style={styles.copy}>No words yet. Finish the sample lesson to save one.</Text>
       ) : (

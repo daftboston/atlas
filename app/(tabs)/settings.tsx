@@ -1,12 +1,8 @@
 import { Pressable, StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
-import { LANGUAGES } from '@/content/sample-lesson';
+import { languageLabel } from '@/content/sample-lesson';
 import { clearProfile, useLearner } from '@/lib/learner-store';
-
-function label(id: string) {
-  return LANGUAGES.find((language) => language.id === id)?.label ?? id;
-}
 
 export default function SettingsScreen() {
   const { profile } = useLearner();
@@ -16,15 +12,20 @@ export default function SettingsScreen() {
       <Text style={styles.title}>Settings</Text>
       {profile ? (
         <Text style={styles.copy}>
-          Learning {label(profile.targetLanguage)} from {label(profile.nativeLanguage)}.
+          Learning {languageLabel(profile.targetLanguage)} from {languageLabel(profile.nativeLanguage)}.
         </Text>
       ) : (
-        <Text style={styles.copy}>No language chosen yet.</Text>
+        <Text style={styles.copy}>Course not started yet.</Text>
       )}
+      <Text style={styles.copy}>Atlas starts with English to Spanish. More languages are coming later.</Text>
       <Text style={styles.copy}>Listening, speaking, and app lock are not in this build yet.</Text>
       {profile ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Choose language again" onPress={clearProfile} style={styles.button}>
-          <Text style={styles.buttonText}>Choose language again</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Show course setup again"
+          onPress={clearProfile}
+          style={styles.button}>
+          <Text style={styles.buttonText}>Show course setup again</Text>
         </Pressable>
       ) : null}
     </View>

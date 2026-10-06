@@ -1,10 +1,25 @@
+// v0 offers a single course: English speakers learning Spanish.
+// The shape stays language-agnostic (native/target ids) so more courses can be
+// added later without changing the learner store.
 export const LANGUAGES = [
   { id: 'en', label: 'English' },
   { id: 'es', label: 'Spanish' },
-  { id: 'pt', label: 'Portuguese' },
 ] as const;
 
 export type LanguageId = (typeof LANGUAGES)[number]['id'];
+
+export type Course = {
+  nativeLanguage: LanguageId;
+  targetLanguage: LanguageId;
+};
+
+export const V0_COURSE: Course = { nativeLanguage: 'en', targetLanguage: 'es' };
+
+export const COURSES: readonly Course[] = [V0_COURSE];
+
+export function languageLabel(id: LanguageId) {
+  return LANGUAGES.find((language) => language.id === id)?.label ?? id;
+}
 
 export type SampleWord = {
   text: string;
@@ -13,29 +28,30 @@ export type SampleWord = {
   lessonId: string;
 };
 
-const SAMPLES: Record<LanguageId, { text: string; example: string; meanings: Record<LanguageId, string> }> = {
-  en: {
-    text: 'hello',
-    example: 'Hello, how are you?',
-    meanings: { en: 'hello', es: 'hola', pt: 'olá' },
-  },
-  es: {
-    text: 'hola',
-    example: 'Hola, ¿cómo estás?',
-    meanings: { en: 'hello', es: 'hola', pt: 'olá' },
-  },
-  pt: {
-    text: 'olá',
-    example: 'Olá, tudo bem?',
-    meanings: { en: 'hello', es: 'hola', pt: 'olá' },
-  },
+type CourseSample = Course & {
+  text: string;
+  meaning: string;
+  example: string;
 };
 
+const SAMPLES: readonly CourseSample[] = [
+  {
+    nativeLanguage: 'en',
+    targetLanguage: 'es',
+    text: 'hola',
+    meaning: 'hello',
+    example: 'Hola, ¿cómo estás?',
+  },
+];
+
 export function sampleWord(target: LanguageId, native: LanguageId): SampleWord {
-  const sample = SAMPLES[target];
+  const sample = SAMPLES.find((item) => item.targetLanguage === target && item.nativeLanguage === native);
+  if (!sample) {
+    throw new Error(`No sample lesson for ${native} -> ${target}`);
+  }
   return {
     text: sample.text,
-    meaning: sample.meanings[native],
+    meaning: sample.meaning,
     example: sample.example,
     lessonId: `sample-${target}`,
   };

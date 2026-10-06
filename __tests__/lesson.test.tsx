@@ -9,24 +9,36 @@ describe('Sample lesson', () => {
     resetLearnerForTests();
   });
 
-  it('saves a word as ready to review after a language is chosen', async () => {
+  it('offers only the English to Spanish course', async () => {
     await render(<LearnScreen />);
 
-    await fireEvent.press(screen.getByRole('button', { name: 'Native language, Spanish' }));
-    await fireEvent.press(screen.getByRole('button', { name: 'Target language, English' }));
+    expect(screen.getByText("You speak English, you're learning Spanish")).toBeOnTheScreen();
+    expect(screen.queryByText(/Portuguese/)).toBeNull();
+    expect(screen.queryByText(/I want to learn/)).toBeNull();
+    expect(screen.queryByText(/I speak/)).toBeNull();
+    expect(screen.queryByRole('button', { name: /Portuguese/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Target language/ })).toBeNull();
+    expect(screen.queryByRole('button', { name: /Native language/ })).toBeNull();
+  });
+
+  it('saves "hola" as ready to review after continuing with English to Spanish', async () => {
+    await render(<LearnScreen />);
+
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
 
-    expect(screen.getByText('hello')).toBeOnTheScreen();
+    expect(getLearnerSnapshot().profile).toEqual({ nativeLanguage: 'en', targetLanguage: 'es' });
     expect(screen.getByText('hola')).toBeOnTheScreen();
+    expect(screen.getByText('hello')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Save word' }));
 
     const saved = getLearnerSnapshot().words[0];
     expect(saved).toMatchObject({
-      text: 'hello',
-      meaning: 'hola',
-      language: 'en',
-      lessonId: 'sample-en',
+      id: 'es:hola',
+      text: 'hola',
+      meaning: 'hello',
+      language: 'es',
+      lessonId: 'sample-es',
       status: 'ready-to-review',
       score: null,
       difficulty: 'intro',
@@ -34,6 +46,7 @@ describe('Sample lesson', () => {
     expect(screen.getByRole('button', { name: 'Word saved' })).toBeDisabled();
 
     await render(<ProgressScreen />);
-    expect(screen.getByText(/Ready to review/)).toBeOnTheScreen();
+    expect(screen.getByText('hola')).toBeOnTheScreen();
+    expect(screen.getByText('hello · Ready to review')).toBeOnTheScreen();
   });
 });
