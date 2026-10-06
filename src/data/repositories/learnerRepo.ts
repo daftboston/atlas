@@ -16,7 +16,10 @@ export interface LearnerRepository {
   startCourse(courseId: string): Promise<LearnerProfile>;
   clearProfile(): Promise<void>;
   listSavedWords(): Promise<SavedWord[]>;
-  /** Idempotent: saving the same lesson word again returns the first save unchanged. */
+  /**
+   * Saves the seeded KnowledgeItem behind a lesson word (it never creates items).
+   * Idempotent: saving the same word again returns the first save unchanged.
+   */
   saveWord(word: LessonWord, savedAtMs: number): Promise<SavedWord>;
 }
 
@@ -51,7 +54,11 @@ export function createLearnerRepository(db: AtlasDatabase): LearnerRepository {
         const txSettings = createSettingsRepo(tx);
         const courseId = txSettings.get('activeCourseId');
         if (!courseId) throw new Error('Start a course before saving words');
-        const item = createKnowledgeRepo(tx).ensureLessonWord(courseId, word, savedAtMs);
+        // Lesson words come from the seed deck, which loadSeed has already written.
+        const item = createKnowledgeRepo(tx).getBySeedId(word.seedId);
+        if (!item || item.courseId !== courseId) {
+          throw new Error(`Seed item ${word.seedId} is not in course ${courseId}`);
+        }
         createSavedWordRepo(tx).save({
           itemId: item.id,
           example: word.example,

@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from '@testing-library/react-native';
 
 import LearnScreen from '../app/(tabs)/learn';
 import ReviewScreen from '../app/(tabs)/review';
+import { sampleWord } from '@/content/sample-lesson';
 import { getLearnerSnapshot, hydrateLearner } from '@/state/learnerStore';
 
 import { createMemoryLearnerRepository } from './support/memoryLearnerRepo';
@@ -26,22 +27,22 @@ describe('Sample lesson', () => {
     expect(screen.queryByRole('button', { name: /Native language/ })).toBeNull();
   });
 
-  it('saves "hola" as ready to review after continuing with English to Spanish', async () => {
+  it('saves seed item es-v0-001 ("Hola") as ready to review after continuing with English to Spanish', async () => {
     await render(<LearnScreen />);
 
     await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
 
     expect(getLearnerSnapshot().profile).toEqual({ nativeLanguage: 'en', targetLanguage: 'es' });
     expect(repo.activeCourseId()).toBe('en-es-v0');
-    expect(screen.getByText('hola')).toBeOnTheScreen();
-    expect(screen.getByText('hello')).toBeOnTheScreen();
+    expect(screen.getByText('Hola')).toBeOnTheScreen();
+    expect(screen.getByText('Hello')).toBeOnTheScreen();
 
     await fireEvent.press(screen.getByRole('button', { name: 'Save word' }));
 
     const saved = getLearnerSnapshot().words[0];
     expect(saved).toMatchObject({
-      text: 'hola',
-      meaning: 'hello',
+      text: 'Hola',
+      meaning: 'Hello',
       example: 'Hola, ¿cómo estás?',
       language: 'es',
       lessonId: 'sample-es',
@@ -52,32 +53,21 @@ describe('Sample lesson', () => {
     expect(typeof saved.id).toBe('string');
     expect(new Date(saved.savedAt).toISOString()).toBe(saved.savedAt);
     expect(await repo.listSavedWords()).toEqual([saved]);
+    expect(repo.savedSeedIds()).toEqual(['es-v0-001']);
     expect(screen.getByRole('button', { name: 'Word saved' })).toBeDisabled();
 
     await render(<ReviewScreen />);
-    expect(screen.getByText('hola')).toBeOnTheScreen();
-    expect(screen.getByText('hello · Ready to review')).toBeOnTheScreen();
+    expect(screen.getByText('Hola')).toBeOnTheScreen();
+    expect(screen.getByText('Hello · Ready to review')).toBeOnTheScreen();
   });
 
   it('shows words saved in an earlier run once the store loads them', async () => {
     await repo.startCourse('en-es-v0');
-    await repo.saveWord(
-      {
-        contentId: 'sample:es:hola',
-        kind: 'word',
-        level: 'A1',
-        topic: 'greetings',
-        text: 'hola',
-        meaning: 'hello',
-        example: 'Hola, ¿cómo estás?',
-        lessonId: 'sample-es',
-      },
-      Date.UTC(2026, 9, 6),
-    );
+    await repo.saveWord(sampleWord('es', 'en'), Date.UTC(2026, 9, 6));
     await hydrateLearner(repo);
 
     await render(<ReviewScreen />);
-    expect(screen.getByText('hola')).toBeOnTheScreen();
-    expect(screen.getByText('hello · Ready to review')).toBeOnTheScreen();
+    expect(screen.getByText('Hola')).toBeOnTheScreen();
+    expect(screen.getByText('Hello · Ready to review')).toBeOnTheScreen();
   });
 });

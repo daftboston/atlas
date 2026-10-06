@@ -29,37 +29,39 @@ export function languageLabel(id: LanguageCode) {
   return LANGUAGES.find((language) => language.id === id)?.label ?? id;
 }
 
+/**
+ * Each course's sample lesson teaches one item from that course's seed deck, so the
+ * saved word is the seeded KnowledgeItem rather than a second copy of it.
+ */
 type CourseSample = {
-  nativeLanguage: LanguageCode;
-  targetLanguage: LanguageCode;
-  text: string;
-  meaning: string;
+  courseId: string;
+  seedId: string;
   example: string;
 };
 
 const SAMPLES: readonly CourseSample[] = [
   {
-    nativeLanguage: 'en',
-    targetLanguage: 'es',
-    text: 'hola',
-    meaning: 'hello',
+    courseId: seedV0.courseId,
+    seedId: 'es-v0-001', // Hola / Hello
     example: 'Hola, ¿cómo estás?',
   },
 ];
 
+const SEED_ITEMS: Record<string, readonly { seedId: string; target: string; prompt: string }[]> = {
+  [seedV0.courseId]: seedV0.items,
+};
+
 export function sampleWord(target: LanguageCode, native: LanguageCode): LessonWord {
-  const sample = SAMPLES.find((item) => item.targetLanguage === target && item.nativeLanguage === native);
-  if (!sample) {
+  const course = COURSES.find((item) => item.targetLanguage === target && item.nativeLanguage === native);
+  const sample = course && SAMPLES.find((item) => item.courseId === course.courseId);
+  const seedItem = sample && SEED_ITEMS[sample.courseId]?.find((item) => item.seedId === sample.seedId);
+  if (!course || !sample || !seedItem) {
     throw new Error(`No sample lesson for ${native} -> ${target}`);
   }
   return {
-    // Stable key stored in knowledge_items.seed_id; keeps "save" idempotent.
-    contentId: `sample:${target}:${sample.text}`,
-    kind: 'word',
-    level: 'A1',
-    topic: 'greetings',
-    text: sample.text,
-    meaning: sample.meaning,
+    seedId: seedItem.seedId,
+    text: seedItem.target,
+    meaning: seedItem.prompt,
     example: sample.example,
     lessonId: `sample-${target}`,
   };

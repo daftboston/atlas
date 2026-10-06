@@ -95,11 +95,11 @@ export type SavedWord = {
 
 /** Lesson content for a word the learner can save. */
 export type LessonWord = {
-  /** Stable content key, stored in `knowledge_items.seed_id` so saving twice is idempotent. */
-  contentId: string;
-  kind: ItemKind;
-  level: CefrLevel;
-  topic: string;
+  /**
+   * The seed-deck item the lesson teaches (`knowledge_items.seed_id`, e.g. `es-v0-001`).
+   * Saving looks the item up by this key, so saving twice is idempotent.
+   */
+  seedId: string;
   text: string;
   meaning: string;
   example: string;

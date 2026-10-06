@@ -93,7 +93,7 @@ Template-era code that was moved under `src/` as-is (architecture §5.1) and is 
 
 - `src/components/` also holds the template's `Themed.tsx`, `useColorScheme.ts`, `useClientOnlyValue.ts` (+ `.web.ts` variants), plus `LanguageSetup.tsx`, `SampleLesson.tsx` and `Placeholder.tsx` (stand-in for routes that aren't built yet).
 - `src/constants/Colors.ts` (template theme colors).
-- `src/content/sample-lesson.ts` (the one sample lesson). The seed deck stays in `content/seed/` at the repo root.
+- `src/content/sample-lesson.ts` (the one sample lesson, which teaches seed item `es-v0-001`; lesson words reference seed items by `seedId` and never create knowledge items). The seed deck stays in `content/seed/` at the repo root.
 
 Persistence (on-device, expo-sqlite + Drizzle):
 

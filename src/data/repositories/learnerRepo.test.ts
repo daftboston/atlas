@@ -1,8 +1,10 @@
 /** @jest-environment node */
-import { sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
+import { sampleWord } from '@/content/sample-lesson';
 import type { LessonWord } from '@/domain/types';
 
+import type { AtlasDatabase } from '../client';
 import { appSettings, knowledgeItems, savedWords } from '../schema';
 import { DEFAULT_COURSE } from '../seed/courses';
 import { loadSeed } from '../seed/loadSeed';
@@ -12,22 +14,26 @@ import { createLearnerRepository } from './learnerRepo';
 let mockIdCounter = 0;
 jest.mock('@/lib/id', () => ({ newId: () => `id-${++mockIdCounter}` }));
 
-const HOLA: LessonWord = {
-  contentId: 'sample:es:hola',
-  kind: 'word',
-  level: 'A1',
-  topic: 'greetings',
-  text: 'hola',
-  meaning: 'hello',
-  example: 'Hola, ¿cómo estás?',
+// The sample lesson's word: seed item es-v0-001 (Hola / Hello), already written by loadSeed.
+const HOLA: LessonWord = sampleWord('es', 'en');
+const BUENOS_DIAS: LessonWord = {
+  seedId: 'es-v0-002',
+  text: 'Buenos días',
+  meaning: 'Good morning',
+  example: 'Buenos días, señora.',
   lessonId: 'sample-es',
 };
+const SEEDED_AT = Date.UTC(2026, 9, 6, 13, 50);
 const SAVED_AT = Date.UTC(2026, 9, 6, 13, 51);
 
 async function setup() {
   const db = await openTestDatabase();
-  loadSeed(db, DEFAULT_COURSE, SAVED_AT - 1000);
+  loadSeed(db, DEFAULT_COURSE, SEEDED_AT);
   return { db, repo: createLearnerRepository(db) };
+}
+
+function seededItem(db: AtlasDatabase, seedId: string) {
+  return db.select().from(knowledgeItems).where(eq(knowledgeItems.seedId, seedId)).get();
 }
 
 describe('learnerRepo (SQLite)', () => {
@@ -54,16 +60,26 @@ describe('learnerRepo (SQLite)', () => {
     expect(await repo.getProfile()).toBeNull();
   });
 
+  it('the sample lesson teaches seed item es-v0-001', () => {
+    expect(HOLA).toEqual({
+      seedId: 'es-v0-001',
+      text: 'Hola',
+      meaning: 'Hello',
+      example: 'Hola, ¿cómo estás?',
+      lessonId: 'sample-es',
+    });
+  });
+
   it('saves a word with every field the in-memory store carried', async () => {
-    const { repo } = await setup();
+    const { db, repo } = await setup();
     await repo.startCourse('en-es-v0');
 
     const saved = await repo.saveWord(HOLA, SAVED_AT);
 
     expect(saved).toEqual({
-      id: expect.stringMatching(/^id-\d+$/),
-      text: 'hola',
-      meaning: 'hello',
+      id: seededItem(db, 'es-v0-001')?.id,
+      text: 'Hola',
+      meaning: 'Hello',
       example: 'Hola, ¿cómo estás?',
       lessonId: 'sample-es',
       language: 'es',
@@ -75,23 +91,27 @@ describe('learnerRepo (SQLite)', () => {
     expect(await repo.listSavedWords()).toEqual([saved]);
   });
 
-  it('stores the word as a KnowledgeItem in the active course plus a saved_words row', async () => {
+  it('saves the seeded KnowledgeItem: no new item, the seed row unchanged, plus a saved_words row', async () => {
     const { db, repo } = await setup();
     await repo.startCourse('en-es-v0');
+    const itemsBefore = db.select().from(knowledgeItems).all();
+    const holaBefore = seededItem(db, 'es-v0-001');
+
     const saved = await repo.saveWord(HOLA, SAVED_AT);
 
-    const item = db.select().from(knowledgeItems).where(sql`${knowledgeItems.seedId} = 'sample:es:hola'`).get();
-    expect(item).toMatchObject({
+    expect(db.select().from(knowledgeItems).all()).toEqual(itemsBefore);
+    expect(db.select().from(knowledgeItems).where(eq(knowledgeItems.targetText, 'Hola')).all()).toHaveLength(1);
+    expect(holaBefore).toMatchObject({
       id: saved.id,
+      seedId: 'es-v0-001',
       kind: 'word',
-      targetText: 'hola',
-      meaning: 'hello',
+      targetText: 'Hola',
+      meaning: 'Hello',
       courseId: 'en-es-v0',
-      variants: [],
-      tags: [],
       level: 'A1',
+      topic: 'greetings',
       status: 'new',
-      createdAt: SAVED_AT,
+      createdAt: SEEDED_AT,
     });
     expect(db.select().from(savedWords).all()).toEqual([
       {
@@ -106,9 +126,10 @@ describe('learnerRepo (SQLite)', () => {
     ]);
   });
 
-  it('is idempotent: saving the same word twice keeps one item and the first saved time', async () => {
+  it('is idempotent: saving the same word twice keeps one row and the first saved time', async () => {
     const { db, repo } = await setup();
     await repo.startCourse('en-es-v0');
+    const itemCount = db.select().from(knowledgeItems).all().length;
 
     const first = await repo.saveWord(HOLA, SAVED_AT);
     const second = await repo.saveWord(HOLA, SAVED_AT + 60_000);
@@ -116,17 +137,27 @@ describe('learnerRepo (SQLite)', () => {
     expect(second).toEqual(first);
     expect(await repo.listSavedWords()).toEqual([first]);
     expect(db.select().from(savedWords).all()).toHaveLength(1);
-    expect(
-      db.select().from(knowledgeItems).where(sql`${knowledgeItems.seedId} = 'sample:es:hola'`).all(),
-    ).toHaveLength(1);
+    expect(db.select().from(knowledgeItems).all()).toHaveLength(itemCount);
   });
 
   it('refuses to save before a course is started, and writes nothing', async () => {
     const { db, repo } = await setup();
-    const itemsBefore = db.select().from(knowledgeItems).all().length;
+    const itemsBefore = db.select().from(knowledgeItems).all();
 
     await expect(repo.saveWord(HOLA, SAVED_AT)).rejects.toThrow('Start a course before saving words');
-    expect(db.select().from(knowledgeItems).all()).toHaveLength(itemsBefore);
+    expect(db.select().from(knowledgeItems).all()).toEqual(itemsBefore);
+    expect(db.select().from(savedWords).all()).toEqual([]);
+  });
+
+  it('refuses a word that is not in the active course seed deck, and writes nothing', async () => {
+    const { db, repo } = await setup();
+    await repo.startCourse('en-es-v0');
+    const itemsBefore = db.select().from(knowledgeItems).all();
+
+    await expect(repo.saveWord({ ...HOLA, seedId: 'sample:es:hola' }, SAVED_AT)).rejects.toThrow(
+      'Seed item sample:es:hola is not in course en-es-v0',
+    );
+    expect(db.select().from(knowledgeItems).all()).toEqual(itemsBefore);
     expect(db.select().from(savedWords).all()).toEqual([]);
   });
 
@@ -134,16 +165,16 @@ describe('learnerRepo (SQLite)', () => {
     const { repo } = await setup();
     await repo.startCourse('en-es-v0');
     await repo.saveWord(HOLA, SAVED_AT);
-    await repo.saveWord({ ...HOLA, contentId: 'sample:es:gracias', text: 'gracias', meaning: 'thank you' }, SAVED_AT + 1);
+    await repo.saveWord(BUENOS_DIAS, SAVED_AT + 1);
 
-    expect((await repo.listSavedWords()).map((word) => word.text)).toEqual(['gracias', 'hola']);
+    expect((await repo.listSavedWords()).map((word) => word.text)).toEqual(['Buenos días', 'Hola']);
   });
 
   it('keeps the profile and saved words across a restart (close and reopen the database file)', async () => {
     const path = tempDatabasePath();
     try {
       const first = await openTestDatabase(path);
-      loadSeed(first, DEFAULT_COURSE, SAVED_AT - 1000);
+      loadSeed(first, DEFAULT_COURSE, SEEDED_AT);
       const before = createLearnerRepository(first);
       await before.startCourse('en-es-v0');
       const saved = await before.saveWord(HOLA, SAVED_AT);

@@ -11,14 +11,16 @@ const COURSES: Record<string, LearnerProfile> = {
  */
 export function createMemoryLearnerRepository(): LearnerRepository & {
   activeCourseId: () => string | null;
+  savedSeedIds: () => string[];
 } {
   let activeCourseId: string | null = null;
   let words: SavedWord[] = [];
-  const byContentId = new Map<string, string>();
+  const bySeedId = new Map<string, string>();
   let nextId = 1;
 
   return {
     activeCourseId: () => activeCourseId,
+    savedSeedIds: () => [...bySeedId.keys()],
     async getProfile() {
       return activeCourseId ? COURSES[activeCourseId] : null;
     },
@@ -36,7 +38,7 @@ export function createMemoryLearnerRepository(): LearnerRepository & {
     },
     async saveWord(word, savedAtMs) {
       if (!activeCourseId) throw new Error('Start a course before saving words');
-      const existingId = byContentId.get(word.contentId);
+      const existingId = bySeedId.get(word.seedId);
       const existing = words.find((saved) => saved.id === existingId);
       if (existing) return existing;
       const saved: SavedWord = {
@@ -51,7 +53,7 @@ export function createMemoryLearnerRepository(): LearnerRepository & {
         score: null,
         savedAt: new Date(savedAtMs).toISOString(),
       };
-      byContentId.set(word.contentId, saved.id);
+      bySeedId.set(word.seedId, saved.id);
       words = [saved, ...words];
       return saved;
     },
