@@ -3,13 +3,15 @@ import { StyleSheet } from 'react-native';
 import { Text, View } from '@/components/Themed';
 import { useLearner } from '@/lib/learner-store';
 
-export default function ProgressScreen() {
+// Saved words live on Review (architecture §3 has no Progress tab). The due
+// queue, upcoming load and mastered count arrive with FSRS scheduling.
+export default function ReviewScreen() {
   const { profile, words } = useLearner();
   const saved = profile ? words.filter((word) => word.language === profile.targetLanguage) : [];
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Progress</Text>
+      <Text style={styles.title}>Review</Text>
       {!profile ? (
         <Text style={styles.copy}>Start your course on the Learn tab first.</Text>
       ) : saved.length === 0 ? (
@@ -24,6 +26,9 @@ export default function ProgressScreen() {
           </View>
         ))
       )}
+      <Text style={styles.note}>
+        The review queue is not built yet: no due reviews, upcoming load, or mastered count.
+      </Text>
     </View>
   );
 }
@@ -53,5 +58,11 @@ const styles = StyleSheet.create({
   meta: {
     fontSize: 15,
     opacity: 0.75,
+  },
+  note: {
+    marginTop: 8,
+    fontSize: 15,
+    lineHeight: 22,
+    opacity: 0.6,
   },
 });
