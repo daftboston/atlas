@@ -21,13 +21,13 @@
     "preset": "jest-expo"
   },
   "dependencies": {
-    "expo": "~57.0.26",
+    "expo": "~57.0.27",
     "expo-build-properties": "~57.0.22",
     "expo-constants": "~57.0.19",
     "expo-dev-client": "~57.0.19",
     "expo-font": "~57.0.4",
-    "expo-linking": "~57.0.11",
-    "expo-router": "~57.0.24",
+    "expo-linking": "~57.0.12",
+    "expo-router": "~57.0.25",
     "expo-splash-screen": "~57.0.9",
     "expo-status-bar": "~57.0.1",
     "expo-symbols": "~57.0.3",
