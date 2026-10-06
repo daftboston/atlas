@@ -1,0 +1,875 @@
+{
+  "schemaVersion": 1,
+  "courseId": "en-es-v0",
+  "deckId": "es-a1a2-v0",
+  "sourceLang": "en",
+  "targetLang": "es",
+  "speechLocales": [
+    "es-MX",
+    "es-ES"
+  ],
+  "defaultSpeechLocale": "es-MX",
+  "items": [
+    {
+      "seedId": "es-v0-001",
+      "level": "A1",
+      "topic": "greetings",
+      "kind": "word",
+      "prompt": "Hello",
+      "target": "Hola",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-002",
+      "level": "A1",
+      "topic": "greetings",
+      "kind": "phrase",
+      "prompt": "Good morning",
+      "target": "Buenos días",
+      "variants": [
+        "Buen día"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Buen día\" is common in parts of Latin America."
+    },
+    {
+      "seedId": "es-v0-003",
+      "level": "A1",
+      "topic": "greetings",
+      "kind": "phrase",
+      "prompt": "Good afternoon",
+      "target": "Buenas tardes",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": "Used from about noon until dark."
+    },
+    {
+      "seedId": "es-v0-004",
+      "level": "A1",
+      "topic": "greetings",
+      "kind": "phrase",
+      "prompt": "Good night",
+      "target": "Buenas noches",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": "Works for both \"good evening\" and \"good night\"."
+    },
+    {
+      "seedId": "es-v0-005",
+      "level": "A1",
+      "topic": "greetings",
+      "kind": "phrase",
+      "prompt": "How are you?",
+      "target": "¿Cómo estás?",
+      "variants": [
+        "¿Qué tal?",
+        "¿Cómo está usted?",
+        "¿Cómo está?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Estás\" is informal. Use \"está usted\" with strangers or elders."
+    },
+    {
+      "seedId": "es-v0-006",
+      "level": "A1",
+      "topic": "greetings",
+      "kind": "phrase",
+      "prompt": "I'm fine, thanks",
+      "target": "Estoy bien, gracias",
+      "variants": [
+        "Bien, gracias",
+        "Muy bien, gracias"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-007",
+      "level": "A1",
+      "topic": "politeness",
+      "kind": "phrase",
+      "prompt": "Please",
+      "target": "Por favor",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-008",
+      "level": "A1",
+      "topic": "politeness",
+      "kind": "phrase",
+      "prompt": "Thank you very much",
+      "target": "Muchas gracias",
+      "variants": [
+        "Mil gracias"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-009",
+      "level": "A1",
+      "topic": "politeness",
+      "kind": "phrase",
+      "prompt": "You're welcome",
+      "target": "De nada",
+      "variants": [
+        "Con gusto",
+        "No hay de qué"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Con gusto\" is common in Mexico and Colombia."
+    },
+    {
+      "seedId": "es-v0-010",
+      "level": "A1",
+      "topic": "politeness",
+      "kind": "word",
+      "prompt": "Excuse me (to get someone's attention)",
+      "target": "Disculpe",
+      "variants": [
+        "Perdón",
+        "Disculpa",
+        "Perdone",
+        "Oiga"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Disculpe\" is polite. \"Disculpa\" is informal. \"Perdone\" is common in Spain."
+    },
+    {
+      "seedId": "es-v0-011",
+      "level": "A1",
+      "topic": "greetings",
+      "kind": "phrase",
+      "prompt": "See you later",
+      "target": "Hasta luego",
+      "variants": [
+        "Nos vemos",
+        "Hasta pronto"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-012",
+      "level": "A1",
+      "topic": "introductions",
+      "kind": "phrase",
+      "prompt": "My name is Ana",
+      "target": "Me llamo Ana",
+      "variants": [
+        "Mi nombre es Ana",
+        "Soy Ana"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-013",
+      "level": "A1",
+      "topic": "introductions",
+      "kind": "phrase",
+      "prompt": "What's your name?",
+      "target": "¿Cómo te llamas?",
+      "variants": [
+        "¿Cuál es tu nombre?",
+        "¿Cómo se llama usted?",
+        "¿Cómo se llama?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Te llamas\" is informal. \"Se llama usted\" is formal."
+    },
+    {
+      "seedId": "es-v0-014",
+      "level": "A1",
+      "topic": "introductions",
+      "kind": "phrase",
+      "prompt": "Nice to meet you",
+      "target": "Mucho gusto",
+      "variants": [
+        "Encantado",
+        "Encantada",
+        "Un placer",
+        "Encantado de conocerte",
+        "Encantada de conocerte"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "Say \"encantado\" if you're a man, \"encantada\" if you're a woman."
+    },
+    {
+      "seedId": "es-v0-015",
+      "level": "A1",
+      "topic": "introductions",
+      "kind": "sentence",
+      "prompt": "I'm from the United States",
+      "target": "Soy de Estados Unidos",
+      "variants": [
+        "Soy de los Estados Unidos"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-016",
+      "level": "A1",
+      "topic": "introductions",
+      "kind": "phrase",
+      "prompt": "Where are you from?",
+      "target": "¿De dónde eres?",
+      "variants": [
+        "¿De dónde es usted?",
+        "¿De dónde es?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-017",
+      "level": "A1",
+      "topic": "introductions",
+      "kind": "sentence",
+      "prompt": "I speak a little Spanish",
+      "target": "Hablo un poco de español",
+      "variants": [
+        "Hablo poco español"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-018",
+      "level": "A1",
+      "topic": "clarification",
+      "kind": "phrase",
+      "prompt": "I don't understand",
+      "target": "No entiendo",
+      "variants": [
+        "No comprendo",
+        "No le entiendo",
+        "No te entiendo"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-019",
+      "level": "A1",
+      "topic": "clarification",
+      "kind": "sentence",
+      "prompt": "Can you repeat that, please?",
+      "target": "¿Puede repetir, por favor?",
+      "variants": [
+        "¿Puedes repetir, por favor?",
+        "¿Me lo puede repetir, por favor?",
+        "¿Podría repetir, por favor?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Puede\" is formal. \"Puedes\" is informal."
+    },
+    {
+      "seedId": "es-v0-020",
+      "level": "A1",
+      "topic": "clarification",
+      "kind": "sentence",
+      "prompt": "More slowly, please",
+      "target": "Más despacio, por favor",
+      "variants": [
+        "Más lento, por favor"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-021",
+      "level": "A1",
+      "topic": "clarification",
+      "kind": "phrase",
+      "prompt": "What does this mean?",
+      "target": "¿Qué significa esto?",
+      "variants": [
+        "¿Qué quiere decir esto?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-022",
+      "level": "A1",
+      "topic": "clarification",
+      "kind": "phrase",
+      "prompt": "Do you speak English?",
+      "target": "¿Habla inglés?",
+      "variants": [
+        "¿Hablas inglés?",
+        "¿Usted habla inglés?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-023",
+      "level": "A1",
+      "topic": "time",
+      "kind": "phrase",
+      "prompt": "What time is it?",
+      "target": "¿Qué hora es?",
+      "variants": [
+        "¿Qué horas son?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"¿Qué horas son?\" is common in Latin America."
+    },
+    {
+      "seedId": "es-v0-024",
+      "level": "A1",
+      "topic": "time",
+      "kind": "phrase",
+      "prompt": "It's three o'clock",
+      "target": "Son las tres",
+      "variants": [
+        "Son las 3"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "Use \"es la una\" for one o'clock and \"son las\" for every other hour."
+    },
+    {
+      "seedId": "es-v0-025",
+      "level": "A1",
+      "topic": "numbers",
+      "kind": "phrase",
+      "prompt": "I'm twenty-five years old",
+      "target": "Tengo veinticinco años",
+      "variants": [
+        "Tengo 25 años"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "Spanish uses \"tener\" (to have) for age."
+    },
+    {
+      "seedId": "es-v0-026",
+      "level": "A1",
+      "topic": "shopping",
+      "kind": "phrase",
+      "prompt": "How much does it cost?",
+      "target": "¿Cuánto cuesta?",
+      "variants": [
+        "¿Cuánto vale?",
+        "¿Cuánto es?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-027",
+      "level": "A1",
+      "topic": "time",
+      "kind": "phrase",
+      "prompt": "Today is Monday",
+      "target": "Hoy es lunes",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": "Days of the week aren't capitalized in Spanish."
+    },
+    {
+      "seedId": "es-v0-028",
+      "level": "A1",
+      "topic": "food",
+      "kind": "sentence",
+      "prompt": "A coffee, please",
+      "target": "Un café, por favor",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-029",
+      "level": "A1",
+      "topic": "food",
+      "kind": "phrase",
+      "prompt": "I'd like some water",
+      "target": "Quisiera agua",
+      "variants": [
+        "Me gustaría agua",
+        "Quiero agua",
+        "Quisiera un poco de agua",
+        "Quisiera agua, por favor"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Quisiera\" is softer and more polite than \"quiero\"."
+    },
+    {
+      "seedId": "es-v0-030",
+      "level": "A1",
+      "topic": "food",
+      "kind": "sentence",
+      "prompt": "The check, please",
+      "target": "La cuenta, por favor",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-031",
+      "level": "A1",
+      "topic": "food",
+      "kind": "phrase",
+      "prompt": "I'm hungry",
+      "target": "Tengo hambre",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": "Literally \"I have hunger\"."
+    },
+    {
+      "seedId": "es-v0-032",
+      "level": "A1",
+      "topic": "food",
+      "kind": "phrase",
+      "prompt": "I'm thirsty",
+      "target": "Tengo sed",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-033",
+      "level": "A1",
+      "topic": "food",
+      "kind": "phrase",
+      "prompt": "It's delicious",
+      "target": "Está delicioso",
+      "variants": [
+        "Está deliciosa",
+        "Está rico",
+        "Está muy rico",
+        "Está rica"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "The ending agrees with the food's gender."
+    },
+    {
+      "seedId": "es-v0-034",
+      "level": "A1",
+      "topic": "food",
+      "kind": "phrase",
+      "prompt": "I'm vegetarian",
+      "target": "Soy vegetariano",
+      "variants": [
+        "Soy vegetariana"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "Use \"vegetariana\" if you're a woman."
+    },
+    {
+      "seedId": "es-v0-035",
+      "level": "A1",
+      "topic": "directions",
+      "kind": "sentence",
+      "prompt": "Where is the bathroom?",
+      "target": "¿Dónde está el baño?",
+      "variants": [
+        "¿Dónde queda el baño?",
+        "¿Dónde están los servicios?",
+        "¿Dónde está el servicio?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Los servicios\" is common in Spain."
+    },
+    {
+      "seedId": "es-v0-036",
+      "level": "A1",
+      "topic": "directions",
+      "kind": "sentence",
+      "prompt": "Where is the train station?",
+      "target": "¿Dónde está la estación de tren?",
+      "variants": [
+        "¿Dónde queda la estación de tren?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-037",
+      "level": "A1",
+      "topic": "directions",
+      "kind": "phrase",
+      "prompt": "To the left",
+      "target": "A la izquierda",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-038",
+      "level": "A1",
+      "topic": "directions",
+      "kind": "phrase",
+      "prompt": "To the right",
+      "target": "A la derecha",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-039",
+      "level": "A1",
+      "topic": "directions",
+      "kind": "phrase",
+      "prompt": "Straight ahead",
+      "target": "Todo derecho",
+      "variants": [
+        "Derecho",
+        "Siempre derecho",
+        "Todo recto",
+        "Recto"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Todo recto\" is used in Spain. \"Derecho\" is used in Latin America."
+    },
+    {
+      "seedId": "es-v0-040",
+      "level": "A1",
+      "topic": "feelings",
+      "kind": "phrase",
+      "prompt": "I'm tired",
+      "target": "Estoy cansado",
+      "variants": [
+        "Estoy cansada"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "Use \"cansada\" if you're a woman."
+    },
+    {
+      "seedId": "es-v0-041",
+      "level": "A1",
+      "topic": "weather",
+      "kind": "sentence",
+      "prompt": "It's very hot today",
+      "target": "Hoy hace mucho calor",
+      "variants": [
+        "Hace mucho calor hoy"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "Weather uses \"hacer\": \"hace calor\", \"hace frío\"."
+    },
+    {
+      "seedId": "es-v0-042",
+      "level": "A2",
+      "topic": "food",
+      "kind": "sentence",
+      "prompt": "I'd like to book a table for two",
+      "target": "Quisiera reservar una mesa para dos",
+      "variants": [
+        "Me gustaría reservar una mesa para dos",
+        "Quiero reservar una mesa para dos",
+        "Quisiera reservar una mesa para 2"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-043",
+      "level": "A2",
+      "topic": "directions",
+      "kind": "sentence",
+      "prompt": "Is it far from here?",
+      "target": "¿Está lejos de aquí?",
+      "variants": [
+        "¿Queda lejos de aquí?",
+        "¿Está lejos?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-044",
+      "level": "A2",
+      "topic": "directions",
+      "kind": "sentence",
+      "prompt": "How do I get to the center?",
+      "target": "¿Cómo llego al centro?",
+      "variants": [
+        "¿Cómo puedo llegar al centro?",
+        "¿Cómo se llega al centro?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-045",
+      "level": "A2",
+      "topic": "travel",
+      "kind": "phrase",
+      "prompt": "I need a taxi",
+      "target": "Necesito un taxi",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-046",
+      "level": "A2",
+      "topic": "travel",
+      "kind": "sentence",
+      "prompt": "What time does the bus leave?",
+      "target": "¿A qué hora sale el autobús?",
+      "variants": [
+        "¿A qué hora sale el bus?",
+        "¿A qué hora sale el camión?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "In Mexico a city bus is often \"camión\"."
+    },
+    {
+      "seedId": "es-v0-047",
+      "level": "A2",
+      "topic": "shopping",
+      "kind": "sentence",
+      "prompt": "Do you have this in another size?",
+      "target": "¿Tiene esto en otra talla?",
+      "variants": [
+        "¿Lo tiene en otra talla?",
+        "¿Tienes esto en otra talla?",
+        "¿Tiene esto en otro tamaño?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Talla\" is for clothing sizes, and \"tamaño\" for general size."
+    },
+    {
+      "seedId": "es-v0-048",
+      "level": "A2",
+      "topic": "shopping",
+      "kind": "sentence",
+      "prompt": "Can I pay by card?",
+      "target": "¿Puedo pagar con tarjeta?",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-049",
+      "level": "A2",
+      "topic": "shopping",
+      "kind": "sentence",
+      "prompt": "I'm just looking, thanks",
+      "target": "Solo estoy mirando, gracias",
+      "variants": [
+        "Solo estoy viendo, gracias",
+        "Nada más estoy viendo, gracias"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-050",
+      "level": "A2",
+      "topic": "family",
+      "kind": "phrase",
+      "prompt": "I have two brothers",
+      "target": "Tengo dos hermanos",
+      "variants": [
+        "Tengo 2 hermanos"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Hermanos\" can also mean \"siblings\"."
+    },
+    {
+      "seedId": "es-v0-051",
+      "level": "A2",
+      "topic": "family",
+      "kind": "sentence",
+      "prompt": "My sister lives in Madrid",
+      "target": "Mi hermana vive en Madrid",
+      "variants": [],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-052",
+      "level": "A2",
+      "topic": "routine",
+      "kind": "sentence",
+      "prompt": "I get up at seven",
+      "target": "Me levanto a las siete",
+      "variants": [
+        "Me levanto a las 7"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Levantarse\" is reflexive: me levanto, te levantas."
+    },
+    {
+      "seedId": "es-v0-053",
+      "level": "A2",
+      "topic": "routine",
+      "kind": "sentence",
+      "prompt": "I usually go to work by bus",
+      "target": "Normalmente voy al trabajo en autobús",
+      "variants": [
+        "Normalmente voy al trabajo en bus",
+        "Por lo general voy al trabajo en autobús",
+        "Normalmente voy al trabajo en camión"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-054",
+      "level": "A2",
+      "topic": "plans",
+      "kind": "sentence",
+      "prompt": "What are you doing this weekend?",
+      "target": "¿Qué vas a hacer este fin de semana?",
+      "variants": [
+        "¿Qué haces este fin de semana?",
+        "¿Qué va a hacer este fin de semana?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-055",
+      "level": "A2",
+      "topic": "health",
+      "kind": "sentence",
+      "prompt": "I don't feel well",
+      "target": "No me siento bien",
+      "variants": [
+        "Me siento mal"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    },
+    {
+      "seedId": "es-v0-056",
+      "level": "A2",
+      "topic": "health",
+      "kind": "sentence",
+      "prompt": "My head hurts",
+      "target": "Me duele la cabeza",
+      "variants": [
+        "Tengo dolor de cabeza"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "Spanish says \"the head hurts me\", not \"my head\"."
+    },
+    {
+      "seedId": "es-v0-057",
+      "level": "A2",
+      "topic": "weather",
+      "kind": "sentence",
+      "prompt": "It's going to rain tomorrow",
+      "target": "Mañana va a llover",
+      "variants": [
+        "Va a llover mañana"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Ir a\" + infinitive talks about the near future."
+    },
+    {
+      "seedId": "es-v0-058",
+      "level": "A2",
+      "topic": "past",
+      "kind": "sentence",
+      "prompt": "Yesterday I went to the market",
+      "target": "Ayer fui al mercado",
+      "variants": [
+        "Fui al mercado ayer"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "\"Fui\" is the past tense of both \"ir\" (to go) and \"ser\" (to be)."
+    },
+    {
+      "seedId": "es-v0-059",
+      "level": "A2",
+      "topic": "past",
+      "kind": "sentence",
+      "prompt": "I've never been to Mexico",
+      "target": "Nunca he estado en México",
+      "variants": [
+        "Nunca he ido a México",
+        "Nunca fui a México",
+        "Nunca estuve en México"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": "Latin America often uses the simple past here, so \"nunca fui\" is fine."
+    },
+    {
+      "seedId": "es-v0-060",
+      "level": "A2",
+      "topic": "clarification",
+      "kind": "sentence",
+      "prompt": "Could you help me, please?",
+      "target": "¿Me podría ayudar, por favor?",
+      "variants": [
+        "¿Me puede ayudar, por favor?",
+        "¿Podría ayudarme, por favor?",
+        "¿Me puedes ayudar, por favor?",
+        "¿Puede ayudarme, por favor?"
+      ],
+      "reading": null,
+      "romanization": null,
+      "notes": null
+    }
+  ]
+}
