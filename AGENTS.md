@@ -50,5 +50,5 @@ Project-specific rules for this repo (override the generic guidance above where 
 - **Bundle ID** is `daft.atlas` (iOS and Android); the fallback is `com.daft.atlas`. Do not change it.
 - **FamilyControls / Screen Time is deferred.** These entitlements need a real device and a paid account. Keep any such functionality behind a stub/no-op interface until both are available; do not add the entitlement or native targets yet.
 - **Before declaring a task done**, run and pass: `npm run lint`, `npm run typecheck`, `npm test` (and `npm run doctor` after dependency changes).
-- **No new dependencies without lead approval.** When a dependency is approved, add it with `npx expo install`. `expo-sqlite` is approved for on-device persistence.
+- **No new dependencies without lead approval.** When a dependency is approved, add it with `npx expo install`. `expo-sqlite`, `drizzle-orm` and `drizzle-kit` (dev) are approved for on-device persistence.
 - Node 22 (`.nvmrc`); install with `npm ci`.

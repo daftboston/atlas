@@ -46,7 +46,7 @@ This is what's on `main` today (PR #1 foundation + PR #2 first lesson):
 
 ## Next work, in order
 
-1. **On-device persistence.** Use `expo-sqlite` (approved by lead) + Drizzle as specified in [architecture.md](docs/architecture.md) and [learning-loop §3](docs/learning-loop.md#3-entities-sqlite-tables-drizzle). Keep the fields the current saved word already carries (id, text, meaning, example, lessonId, language, difficulty, status, score, savedAt), so nothing the app records today is dropped.
+1. **On-device persistence.** Use `expo-sqlite` + `drizzle-orm` (`drizzle-kit` as a dev dependency), all approved by the lead, as specified in [architecture.md](docs/architecture.md) and [learning-loop §3](docs/learning-loop.md#3-entities-sqlite-tables-drizzle). Keep the fields the current saved word already carries (id, text, meaning, example, lessonId, language, difficulty, status, score, savedAt), so nothing the app records today is dropped.
 2. **Listening & speaking.** TTS playback and mic capture through the speech service contract ([architecture §6](docs/architecture.md#6-speech-service-contract)), with on-device STT and text-match scoring, and the mock implementation for the simulator and tests.
 3. **Real lesson list** built from [`content/seed/seed-phrases-v0.json`](content/seed/seed-phrases-v0.json), loaded idempotently ([learning-loop §11](docs/learning-loop.md#11-seed-content-schema-contentseedseed-phrases-v0json)).
 4. **Review & unlock.** FSRS review queue, session rules, and unlock grants ([learning-loop §4–8](docs/learning-loop.md#4-scheduling-algorithm-fsrs-recommended-over-sm-2)), with the Screen Time **stub** only ([architecture §7](docs/architecture.md#7-screen-time-service-contract-stub-able)).

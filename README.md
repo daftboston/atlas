@@ -30,7 +30,7 @@ Cloud alternative (requires an Expo account and linking the project with EAS): `
 | `npm test`          | Jest (jest-expo preset + Testing Library)      |
 | `npm run doctor`    | `expo-doctor` dependency/config checks         |
 
-CI (GitHub Actions) runs lint, typecheck and tests on every pull request and on pushes to `main`.
+CI is not set up yet. Until it is, run `npm run lint`, `npm run typecheck` and `npm test` locally before every pull request.
 
 ## License
 
