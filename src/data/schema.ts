@@ -2,6 +2,9 @@
 // the rest (review_queue, review_logs, sessions, attempts, feedback, unlock_grants)
 // arrive with the work that needs them.
 // Conventions (§3): UUID text ids, integer ms (UTC) timestamps, text enums with CHECK.
+// Text primary keys are declared NOT NULL explicitly: SQLite otherwise lets a
+// non-INTEGER primary key hold NULL. drizzle-kit 0.31 emits NOT NULL for primary keys
+// on its own, but 1.0 RCs don't, so the schema states it rather than relying on the kit.
 import { sql, type SQL } from 'drizzle-orm';
 import { check, integer, real, sqliteTable, text, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 
@@ -20,7 +23,7 @@ function oneOf(column: AnySQLiteColumn, values: readonly string[]): SQL {
 
 /** §3.0 Course */
 export const courses = sqliteTable('courses', {
-  id: text('id').primaryKey(),
+  id: text('id').primaryKey().notNull(),
   sourceLang: text('source_lang').notNull(),
   targetLang: text('target_lang').notNull(),
   speechLocale: text('speech_locale').notNull(),
@@ -33,7 +36,7 @@ export const courses = sqliteTable('courses', {
 export const knowledgeItems = sqliteTable(
   'knowledge_items',
   {
-    id: text('id').primaryKey(),
+    id: text('id').primaryKey().notNull(),
     seedId: text('seed_id').unique(),
     kind: text('kind', { enum: ITEM_KINDS }).notNull(),
     targetText: text('target_text').notNull(),
@@ -68,7 +71,7 @@ export const knowledgeItems = sqliteTable(
 
 /** §3.8 Settings, key/value. Values are JSON-encoded. */
 export const appSettings = sqliteTable('app_settings', {
-  key: text('key').primaryKey(),
+  key: text('key').primaryKey().notNull(),
   value: text('value').notNull(),
 });
 
@@ -83,6 +86,7 @@ export const savedWords = sqliteTable(
   {
     itemId: text('item_id')
       .primaryKey()
+      .notNull()
       .references(() => knowledgeItems.id, { onDelete: 'cascade' }),
     example: text('example').notNull(),
     lessonId: text('lesson_id').notNull(),

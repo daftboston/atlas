@@ -24,8 +24,8 @@ const HOLA: LessonWord = {
 };
 const SAVED_AT = Date.UTC(2026, 9, 6, 13, 51);
 
-function setup() {
-  const db = openTestDatabase();
+async function setup() {
+  const db = await openTestDatabase();
   loadSeed(db, DEFAULT_COURSE, SAVED_AT - 1000);
   return { db, repo: createLearnerRepository(db) };
 }
@@ -36,7 +36,7 @@ describe('learnerRepo (SQLite)', () => {
   });
 
   it('has no profile until a course is started, and stores activeCourseId in app_settings', async () => {
-    const { db, repo } = setup();
+    const { db, repo } = await setup();
     expect(await repo.getProfile()).toBeNull();
 
     expect(await repo.startCourse('en-es-v0')).toEqual({ nativeLanguage: 'en', targetLanguage: 'es' });
@@ -49,13 +49,13 @@ describe('learnerRepo (SQLite)', () => {
   });
 
   it('rejects a course that does not exist', async () => {
-    const { repo } = setup();
+    const { repo } = await setup();
     await expect(repo.startCourse('en-xx-v0')).rejects.toThrow('Unknown course en-xx-v0');
     expect(await repo.getProfile()).toBeNull();
   });
 
   it('saves a word with every field the in-memory store carried', async () => {
-    const { repo } = setup();
+    const { repo } = await setup();
     await repo.startCourse('en-es-v0');
 
     const saved = await repo.saveWord(HOLA, SAVED_AT);
@@ -76,7 +76,7 @@ describe('learnerRepo (SQLite)', () => {
   });
 
   it('stores the word as a KnowledgeItem in the active course plus a saved_words row', async () => {
-    const { db, repo } = setup();
+    const { db, repo } = await setup();
     await repo.startCourse('en-es-v0');
     const saved = await repo.saveWord(HOLA, SAVED_AT);
 
@@ -107,7 +107,7 @@ describe('learnerRepo (SQLite)', () => {
   });
 
   it('is idempotent: saving the same word twice keeps one item and the first saved time', async () => {
-    const { db, repo } = setup();
+    const { db, repo } = await setup();
     await repo.startCourse('en-es-v0');
 
     const first = await repo.saveWord(HOLA, SAVED_AT);
@@ -122,7 +122,7 @@ describe('learnerRepo (SQLite)', () => {
   });
 
   it('refuses to save before a course is started, and writes nothing', async () => {
-    const { db, repo } = setup();
+    const { db, repo } = await setup();
     const itemsBefore = db.select().from(knowledgeItems).all().length;
 
     await expect(repo.saveWord(HOLA, SAVED_AT)).rejects.toThrow('Start a course before saving words');
@@ -131,7 +131,7 @@ describe('learnerRepo (SQLite)', () => {
   });
 
   it('lists saved words newest first', async () => {
-    const { repo } = setup();
+    const { repo } = await setup();
     await repo.startCourse('en-es-v0');
     await repo.saveWord(HOLA, SAVED_AT);
     await repo.saveWord({ ...HOLA, contentId: 'sample:es:gracias', text: 'gracias', meaning: 'thank you' }, SAVED_AT + 1);
@@ -142,7 +142,7 @@ describe('learnerRepo (SQLite)', () => {
   it('keeps the profile and saved words across a restart (close and reopen the database file)', async () => {
     const path = tempDatabasePath();
     try {
-      const first = openTestDatabase(path);
+      const first = await openTestDatabase(path);
       loadSeed(first, DEFAULT_COURSE, SAVED_AT - 1000);
       const before = createLearnerRepository(first);
       await before.startCourse('en-es-v0');
@@ -150,7 +150,7 @@ describe('learnerRepo (SQLite)', () => {
       first.close();
 
       // Second launch: migrations and seeding run again, then the store reloads.
-      const second = openTestDatabase(path);
+      const second = await openTestDatabase(path);
       loadSeed(second, DEFAULT_COURSE, SAVED_AT + 1000);
       const after = createLearnerRepository(second);
       expect(await after.getProfile()).toEqual({ nativeLanguage: 'en', targetLanguage: 'es' });
@@ -161,8 +161,8 @@ describe('learnerRepo (SQLite)', () => {
     }
   });
 
-  it('enforces the CHECK constraints on enums', () => {
-    const { db } = setup();
+  it('enforces the CHECK constraints on enums', async () => {
+    const { db } = await setup();
     let failure: unknown;
     try {
       db.run(

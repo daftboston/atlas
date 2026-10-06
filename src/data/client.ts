@@ -1,8 +1,7 @@
-import type { SQLiteAsyncDatabase } from 'drizzle-orm/sqlite-core';
+import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core';
 
 /**
- * Any Drizzle SQLite database with synchronous results: `expo-sqlite` in the app,
- * Node's built-in `node:sqlite` in Jest. Repositories only depend on this type, so
- * the same code runs in both places.
+ * A Drizzle SQLite database with synchronous results, as the expo-sqlite driver
+ * returns. Repositories depend on this type (transactions included), not on expo-sqlite.
  */
-export type AtlasDatabase = SQLiteAsyncDatabase<'sync', any>;
+export type AtlasDatabase = BaseSQLiteDatabase<'sync', any>;

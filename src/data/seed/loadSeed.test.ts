@@ -13,8 +13,8 @@ jest.mock('@/lib/id', () => ({ newId: () => `id-${++mockIdCounter}` }));
 const T0 = Date.UTC(2026, 9, 6);
 
 describe('loadSeed (learning-loop §11)', () => {
-  it('seeds the v0 course (en → es, es-MX by default) and its 60 phrases as new items', () => {
-    const db = openTestDatabase();
+  it('seeds the v0 course (en → es, es-MX by default) and its 60 phrases as new items', async () => {
+    const db = await openTestDatabase();
 
     expect(loadSeed(db, DEFAULT_COURSE, T0)).toEqual({ courseId: 'en-es-v0', itemsInserted: 60, itemsUpdated: 0 });
 
@@ -46,8 +46,8 @@ describe('loadSeed (learning-loop §11)', () => {
     });
   });
 
-  it('is idempotent: running it twice creates no duplicates and changes nothing', () => {
-    const db = openTestDatabase();
+  it('is idempotent: running it twice creates no duplicates and changes nothing', async () => {
+    const db = await openTestDatabase();
     loadSeed(db, DEFAULT_COURSE, T0);
     const before = db.select().from(knowledgeItems).all();
 
@@ -60,8 +60,8 @@ describe('loadSeed (learning-loop §11)', () => {
     expect(db.select().from(knowledgeItems).all()).toEqual(before);
   });
 
-  it('applies edits to text fields without resetting progress or the chosen speech locale', () => {
-    const db = openTestDatabase();
+  it('applies edits to text fields without resetting progress or the chosen speech locale', async () => {
+    const db = await openTestDatabase();
     loadSeed(db, DEFAULT_COURSE, T0);
     const original = db.select().from(knowledgeItems).where(eq(knowledgeItems.seedId, 'es-v0-001')).get()!;
     // Progress the learner made since the first launch.
@@ -94,8 +94,8 @@ describe('loadSeed (learning-loop §11)', () => {
     expect(db.get<{ n: number }>(sql`SELECT count(*) AS n FROM knowledge_items`)?.n).toBe(60);
   });
 
-  it('rejects an invalid seed file without writing anything', () => {
-    const db = openTestDatabase();
+  it('rejects an invalid seed file without writing anything', async () => {
+    const db = await openTestDatabase();
     expect(() => loadSeed(db, { ...DEFAULT_COURSE, seed: { ...seedV0, schemaVersion: 2 } }, T0)).toThrow(
       'schemaVersion must be 1',
     );
