@@ -1,15 +1,15 @@
 import { Pressable, StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
-import { sampleWord, wordId } from '@/content/sample-lesson';
-import { saveWord, useLearner } from '@/lib/learner-store';
+import { sampleWord } from '@/content/sample-lesson';
+import { saveWord, useLearner } from '@/state/learnerStore';
 
 export function SampleLesson() {
   const { profile, words } = useLearner();
   if (!profile) return null;
 
   const sample = sampleWord(profile.targetLanguage, profile.nativeLanguage);
-  const saved = words.some((word) => word.id === wordId(profile.targetLanguage, sample.text));
+  const saved = words.some((word) => word.language === profile.targetLanguage && word.text === sample.text);
 
   return (
     <View style={styles.container}>
@@ -27,7 +27,7 @@ export function SampleLesson() {
         accessibilityLabel={saved ? 'Word saved' : 'Save word'}
         disabled={saved}
         style={[styles.save, saved && styles.saveDisabled]}
-        onPress={() => saveWord(profile.targetLanguage, sample)}>
+        onPress={() => saveWord(sample)}>
         <Text style={styles.saveText} lightColor="#fff" darkColor="#000">
           {saved ? 'Saved' : 'Save word'}
         </Text>

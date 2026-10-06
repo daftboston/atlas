@@ -1,9 +1,12 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect } from 'react';
+import { StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 
+import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
+import { useAppBootstrap } from '@/state/bootstrap';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -15,15 +18,38 @@ export const unstable_settings = {
   initialRouteName: '(tabs)',
 };
 
-// Keep the splash screen up until the root layout has mounted.
+// Keep the splash screen up until the local database is ready.
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const { ready, error } = useAppBootstrap();
+
   useEffect(() => {
-    SplashScreen.hideAsync();
-  }, []);
+    if (ready || error) {
+      SplashScreen.hideAsync();
+    }
+  }, [ready, error]);
+
+  if (error) {
+    return <StartupError message={error.message} />;
+  }
+
+  if (!ready) {
+    return null;
+  }
 
   return <RootLayoutNav />;
+}
+
+function StartupError({ message }: { message: string }) {
+  return (
+    <View style={styles.error}>
+      <Text style={styles.errorTitle} accessibilityRole="header">
+        Atlas couldn&apos;t open your saved data
+      </Text>
+      <Text style={styles.errorMessage}>{message}</Text>
+    </View>
+  );
 }
 
 function RootLayoutNav() {
@@ -44,3 +70,20 @@ function RootLayoutNav() {
     </ThemeProvider>
   );
 }
+
+const styles = StyleSheet.create({
+  error: {
+    flex: 1,
+    padding: 24,
+    gap: 12,
+    justifyContent: 'center',
+  },
+  errorTitle: {
+    fontSize: 22,
+    fontWeight: '700',
+  },
+  errorMessage: {
+    fontSize: 15,
+    opacity: 0.75,
+  },
+});

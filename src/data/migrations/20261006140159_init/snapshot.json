@@ -1,0 +1,488 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "id": "caec557f-5285-44ad-a7ec-3a02725ffa1a",
+  "prevIds": [
+    "00000000-0000-0000-0000-000000000000"
+  ],
+  "ddl": [
+    {
+      "name": "app_settings",
+      "entityType": "tables"
+    },
+    {
+      "name": "courses",
+      "entityType": "tables"
+    },
+    {
+      "name": "knowledge_items",
+      "entityType": "tables"
+    },
+    {
+      "name": "saved_words",
+      "entityType": "tables"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "key",
+      "entityType": "columns",
+      "table": "app_settings"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "value",
+      "entityType": "columns",
+      "table": "app_settings"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "courses"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "source_lang",
+      "entityType": "columns",
+      "table": "courses"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "target_lang",
+      "entityType": "columns",
+      "table": "courses"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "speech_locale",
+      "entityType": "columns",
+      "table": "courses"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "speech_locales",
+      "entityType": "columns",
+      "table": "courses"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "title",
+      "entityType": "columns",
+      "table": "courses"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "courses"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "id",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "seed_id",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "kind",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "target_text",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "meaning",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "course_id",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "reading",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "romanization",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "variants",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "level",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "topic",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "notes",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "tags",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status_before_suspend",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "created_at",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "introduced_at",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "mastered_at",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "updated_at",
+      "entityType": "columns",
+      "table": "knowledge_items"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "item_id",
+      "entityType": "columns",
+      "table": "saved_words"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "example",
+      "entityType": "columns",
+      "table": "saved_words"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "lesson_id",
+      "entityType": "columns",
+      "table": "saved_words"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "difficulty",
+      "entityType": "columns",
+      "table": "saved_words"
+    },
+    {
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "status",
+      "entityType": "columns",
+      "table": "saved_words"
+    },
+    {
+      "type": "real",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "score",
+      "entityType": "columns",
+      "table": "saved_words"
+    },
+    {
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "saved_at",
+      "entityType": "columns",
+      "table": "saved_words"
+    },
+    {
+      "columns": [
+        "course_id"
+      ],
+      "tableTo": "courses",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "NO ACTION",
+      "nameExplicit": false,
+      "name": "fk_knowledge_items_course_id_courses_id_fk",
+      "entityType": "fks",
+      "table": "knowledge_items"
+    },
+    {
+      "columns": [
+        "item_id"
+      ],
+      "tableTo": "knowledge_items",
+      "columnsTo": [
+        "id"
+      ],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "name": "fk_saved_words_item_id_knowledge_items_id_fk",
+      "entityType": "fks",
+      "table": "saved_words"
+    },
+    {
+      "columns": [
+        "key"
+      ],
+      "nameExplicit": false,
+      "name": "app_settings_pk",
+      "table": "app_settings",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "courses_pk",
+      "table": "courses",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "knowledge_items_pk",
+      "table": "knowledge_items",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "item_id"
+      ],
+      "nameExplicit": false,
+      "name": "saved_words_pk",
+      "table": "saved_words",
+      "entityType": "pks"
+    },
+    {
+      "columns": [
+        "seed_id"
+      ],
+      "nameExplicit": false,
+      "name": "knowledge_items_seed_id_unique",
+      "entityType": "uniques",
+      "table": "knowledge_items"
+    },
+    {
+      "value": "\"kind\" IN ('word', 'phrase', 'sentence')",
+      "name": "knowledge_items_kind_check",
+      "entityType": "checks",
+      "table": "knowledge_items"
+    },
+    {
+      "value": "\"level\" IN ('A1', 'A2')",
+      "name": "knowledge_items_level_check",
+      "entityType": "checks",
+      "table": "knowledge_items"
+    },
+    {
+      "value": "\"status\" IN ('new', 'learning', 'review', 'relearning', 'mastered', 'suspended')",
+      "name": "knowledge_items_status_check",
+      "entityType": "checks",
+      "table": "knowledge_items"
+    },
+    {
+      "value": "\"status_before_suspend\" IS NULL OR \"status_before_suspend\" IN ('new', 'learning', 'review', 'relearning', 'mastered', 'suspended')",
+      "name": "knowledge_items_status_before_suspend_check",
+      "entityType": "checks",
+      "table": "knowledge_items"
+    },
+    {
+      "value": "\"difficulty\" IN ('intro')",
+      "name": "saved_words_difficulty_check",
+      "entityType": "checks",
+      "table": "saved_words"
+    },
+    {
+      "value": "\"status\" IN ('ready-to-review')",
+      "name": "saved_words_status_check",
+      "entityType": "checks",
+      "table": "saved_words"
+    }
+  ],
+  "renames": []
+}

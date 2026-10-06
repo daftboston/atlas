@@ -1,6 +1,12 @@
 import { renderRouter, screen } from 'expo-router/testing-library';
 
-import { resetLearnerForTests } from '@/lib/learner-store';
+import { hydrateLearner } from '@/state/learnerStore';
+
+import { createMemoryLearnerRepository } from './support/memoryLearnerRepo';
+
+// The real root layout opens expo-sqlite, which Jest can't run. Skip startup and
+// hydrate the learner store from an in-memory repository instead.
+jest.mock('@/state/bootstrap', () => ({ useAppBootstrap: () => ({ ready: true, error: null }) }));
 
 // renderRouter resolves this path from the working directory (the repo root under
 // `npm test`), not from the test file as its docs say.
@@ -8,8 +14,8 @@ const appDir = './app';
 
 // Every non-tab route in architecture §3 exists and says honestly that it is not built yet.
 describe('Route map (architecture §3)', () => {
-  beforeEach(() => {
-    resetLearnerForTests();
+  beforeEach(async () => {
+    await hydrateLearner(createMemoryLearnerRepository());
   });
 
   it.each([

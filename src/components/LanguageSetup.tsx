@@ -2,7 +2,7 @@ import { Pressable, StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { COURSES, languageLabel } from '@/content/sample-lesson';
-import { setProfile } from '@/lib/learner-store';
+import { startCourse } from '@/state/learnerStore';
 
 export function LanguageSetup() {
   // v0 has exactly one course (English -> Spanish), so there is nothing to pick.
@@ -26,9 +26,7 @@ export function LanguageSetup() {
         accessibilityLabel="Continue"
         accessibilityHint={`Starts the ${nativeLabel} to ${targetLabel} course`}
         style={styles.continue}
-        onPress={() =>
-          setProfile({ nativeLanguage: course.nativeLanguage, targetLanguage: course.targetLanguage })
-        }>
+        onPress={() => startCourse(course.courseId)}>
         <Text style={styles.continueText} lightColor="#fff" darkColor="#000">
           Continue
         </Text>

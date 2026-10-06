@@ -36,20 +36,20 @@ After Spanish: **Japanese (ja-JP), Korean (ko-KR), French (fr-FR)**, in no fixed
 
 ## Current build state
 
-This is what's on `main` today (PR #1 foundation + PR #2 first lesson + the `src/` layout move):
+This is what's on `main` today (PR #1 foundation + PR #2 first lesson + the `src/` layout move + on-device persistence):
 
 - Foundation: bundle ID `daft.atlas`, EAS config, dev client, ESLint, TypeScript typecheck, Jest + Testing Library, `expo-build-properties` with iOS scene support enabled.
 - Layout: app code lives under `src/` and the `@/*` alias points to `./src/*` ([architecture §5.1](docs/architecture.md#51-migrating-from-the-template-layout)). Routes stay in `app/` at the repo root. The folder map is in [`AGENTS.md`](AGENTS.md#folder-layout).
 - Routes: every route in [architecture §3](docs/architecture.md#3-route-map-expo-router-root-app) exists. Tabs are **Learn**, **Review**, **Unlock**, **Settings**. The `(onboarding)` stack, **Unlock**, `practice/[sessionId]` and `practice/summary/[sessionId]` are placeholders that say they're not built yet, and the onboarding gate isn't wired up.
-- Learn shows the single course ("You speak English, you're learning Spanish") with a Continue button, then one **sample lesson**: the word "hola" ("hello"). Saving it marks it *ready to review* (not mastered), and the **Review** tab lists it (it used to be on the old Progress tab, which §3 doesn't have).
-- **What it doesn't do yet:** the learner store (`src/lib/learner-store.ts`) is **in memory only**, so everything is lost when the app restarts. There is only the sample lesson, with no real lesson list. There is **no audio** (no TTS, no mic), **no scoring**, **no review queue**, and **no app lock / unlock**.
+- Learn shows the single course ("You speak English, you're learning Spanish") with a Continue button, then one **sample lesson**: the word "hola" ("hello"). Saving it marks it *ready to review* (not mastered), and the **Review** tab lists it.
+- **Persistence:** the chosen course and saved words are stored on the device with `expo-sqlite` + Drizzle and survive restarts. Tables so far: `courses`, `knowledge_items`, `app_settings` ([learning-loop §3](docs/learning-loop.md#3-entities-sqlite-tables-drizzle)), plus `saved_words`, which keeps the saved-word fields §3 has no column for. On every launch the app applies migrations and seeds the v0 course and all 60 seed phrases idempotently.
+- **What it doesn't do yet:** there is only the sample lesson, with no real lesson list (the 60 seed phrases are in the database but nothing shows them yet). There is **no audio** (no TTS, no mic), **no scoring**, **no review queue**, and **no app lock / unlock**.
 
 ## Next work, in order
 
-1. **On-device persistence.** Use `expo-sqlite` + `drizzle-orm` (`drizzle-kit` as a dev dependency), all approved by the lead, as specified in [architecture.md](docs/architecture.md) and [learning-loop §3](docs/learning-loop.md#3-entities-sqlite-tables-drizzle). Keep the fields the current saved word already carries (id, text, meaning, example, lessonId, language, difficulty, status, score, savedAt), so nothing the app records today is dropped.
-2. **Listening & speaking.** TTS playback and mic capture through the speech service contract ([architecture §6](docs/architecture.md#6-speech-service-contract)), with on-device STT and text-match scoring, and the mock implementation for the simulator and tests.
-3. **Real lesson list** built from [`content/seed/seed-phrases-v0.json`](content/seed/seed-phrases-v0.json), loaded idempotently ([learning-loop §11](docs/learning-loop.md#11-seed-content-schema-contentseedseed-phrases-v0json)).
-4. **Review & unlock.** FSRS review queue, session rules, and unlock grants ([learning-loop §4–8](docs/learning-loop.md#4-scheduling-algorithm-fsrs-recommended-over-sm-2)), with the Screen Time **stub** only ([architecture §7](docs/architecture.md#7-screen-time-service-contract-stub-able)).
+1. **Listening & speaking.** TTS playback and mic capture through the speech service contract ([architecture §6](docs/architecture.md#6-speech-service-contract)), with on-device STT and text-match scoring, and the mock implementation for the simulator and tests.
+2. **Real lesson list** built from [`content/seed/seed-phrases-v0.json`](content/seed/seed-phrases-v0.json), already loaded idempotently into SQLite ([learning-loop §11](docs/learning-loop.md#11-seed-content-schema-contentseedseed-phrases-v0json)).
+3. **Review & unlock.** FSRS review queue, session rules, and unlock grants ([learning-loop §4–8](docs/learning-loop.md#4-scheduling-algorithm-fsrs-recommended-over-sm-2)), with the Screen Time **stub** only ([architecture §7](docs/architecture.md#7-screen-time-service-contract-stub-able)).
 
 ## Workflow rules
 

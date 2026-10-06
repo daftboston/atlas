@@ -94,6 +94,13 @@ Template-era code that was moved under `src/` as-is (architecture §5.1) and is 
 - `src/components/` also holds the template's `Themed.tsx`, `useColorScheme.ts`, `useClientOnlyValue.ts` (+ `.web.ts` variants), plus `LanguageSetup.tsx`, `SampleLesson.tsx` and `Placeholder.tsx` (stand-in for routes that aren't built yet).
 - `src/constants/Colors.ts` (template theme colors).
 - `src/content/sample-lesson.ts` (the one sample lesson). The seed deck stays in `content/seed/` at the repo root.
-- `src/lib/learner-store.ts` (in-memory learner store, to be replaced by persistence).
+
+Persistence (on-device, expo-sqlite + Drizzle):
+
+- `src/data/schema.ts` is the source for the tables. After changing it, run `npm run db:generate` (drizzle-kit, `driver: 'expo'`) and commit the new folder under `src/data/migrations/` plus the regenerated `migrations.js`. Never edit generated migrations by hand.
+- `.sql` migrations reach the bundle through `babel-plugin-inline-import` (`babel.config.js`) and `sourceExts.push('sql')` (`metro.config.js`), as Drizzle's Expo guide documents.
+- Repositories (`src/data/repositories/`) take an `AtlasDatabase`, so the same code runs on expo-sqlite in the app and on Node's built-in `node:sqlite` in Jest (`src/data/testDatabase.ts`, test-only). UI code goes through `src/state/` and never imports `src/data` directly.
+- `src/state/learnerStore.ts` mirrors the learner profile and saved words from SQLite. It's a `useSyncExternalStore` store until Zustand is approved.
+- UI tests replace the repository with `__tests__/support/memoryLearnerRepo.ts` (Jest can't run native SQLite).
 
 Route tests live in `__tests__/` at the repo root, because Expo Router treats every file in `app/` as a route. Everything else is colocated as `*.test.ts`.
