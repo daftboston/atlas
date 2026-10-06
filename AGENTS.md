@@ -44,9 +44,11 @@ Docs: https://docs.expo.dev/eas/index.md
 
 Project-specific rules for this repo (override the generic guidance above where they conflict).
 
+- **Source of truth:** [`ATLAS.md`](ATLAS.md) (project overview, v0 scope, current state, next work) and the specs in [`docs/`](docs/) (`architecture.md`, `learning-loop.md`, `roadmap.md`). Read them before starting a task. They supersede any older local `ATLAS.md`, `beginner-build-guide.md`, or `com.atlas.app` references.
+- **Branching:** always branch from the updated `main` (`git fetch && git switch -c daniel/<short-description> origin/main`, or an agent branch from the same base). Never push to `main` directly. Open PRs with `gh pr create --fill`; the lead reviews and merges.
 - **Simulator-first dev builds.** The owner develops on a Mac with no physical iPhone and no paid Apple Developer account. Target the iOS Simulator with a development build: `npx expo run:ios` locally, or `eas build --profile development` (the `development` profile builds for the simulator). Do not assume Expo Go, device signing, or TestFlight.
-- **Bundle ID** is `daft.atlas` (iOS and Android). Do not change it.
+- **Bundle ID** is `daft.atlas` (iOS and Android); the fallback is `com.daft.atlas`. Do not change it.
 - **FamilyControls / Screen Time is deferred.** These entitlements need a real device and a paid account. Keep any such functionality behind a stub/no-op interface until both are available; do not add the entitlement or native targets yet.
 - **Before declaring a task done**, run and pass: `npm run lint`, `npm run typecheck`, `npm test` (and `npm run doctor` after dependency changes).
-- **No new dependencies without lead approval.** When a dependency is approved, add it with `npx expo install`.
+- **No new dependencies without lead approval.** When a dependency is approved, add it with `npx expo install`. `expo-sqlite`, `drizzle-orm` and `drizzle-kit` (dev) are approved for on-device persistence.
 - Node 22 (`.nvmrc`); install with `npm ci`.
