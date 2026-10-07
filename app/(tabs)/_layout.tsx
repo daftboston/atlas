@@ -5,6 +5,7 @@ import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useClientOnlyValue } from '@/components/useClientOnlyValue';
 
+// Tab bar from architecture §3: Learn, Review, Unlock, Settings.
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
@@ -15,7 +16,7 @@ export default function TabLayout() {
         headerShown: useClientOnlyValue(false, true),
       }}>
       <Tabs.Screen
-        name="index"
+        name="learn"
         options={{
           title: 'Learn',
           tabBarIcon: ({ color }) => (
@@ -24,12 +25,25 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="progress"
+        name="review"
         options={{
-          title: 'Progress',
+          title: 'Review',
           tabBarIcon: ({ color }) => (
             <SymbolView
-              name={{ ios: 'chart.bar', android: 'bar_chart', web: 'bar_chart' }}
+              name={{ ios: 'arrow.counterclockwise', android: 'replay', web: 'replay' }}
+              tintColor={color}
+              size={24}
+            />
+          ),
+        }}
+      />
+      <Tabs.Screen
+        name="unlock"
+        options={{
+          title: 'Unlock',
+          tabBarIcon: ({ color }) => (
+            <SymbolView
+              name={{ ios: 'lock.open', android: 'lock_open', web: 'lock_open' }}
               tintColor={color}
               size={24}
             />

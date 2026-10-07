@@ -36,13 +36,13 @@ After Spanish: **Japanese (ja-JP), Korean (ko-KR), French (fr-FR)**, in no fixed
 
 ## Current build state
 
-This is what's on `main` today (PR #1 foundation + PR #2 first lesson):
+This is what's on `main` today (PR #1 foundation + PR #2 first lesson + the `src/` layout move):
 
 - Foundation: bundle ID `daft.atlas`, EAS config, dev client, ESLint, TypeScript typecheck, Jest + Testing Library, `expo-build-properties` with iOS scene support enabled.
-- Tabs: **Learn**, **Progress**, **Settings**. These are placeholders, not the target route map in [architecture §3](docs/architecture.md#3-route-map-expo-router-root-app).
-- Learn shows the single course ("You speak English, you're learning Spanish") with a Continue button, then one **sample lesson**: the word "hola" ("hello"). Saving it marks it *ready to review* (not mastered), and Progress lists it.
-- **What it doesn't do yet:** the learner store is **in memory only**, so everything is lost when the app restarts. There is only the sample lesson, with no real lesson list. There is **no audio** (no TTS, no mic), **no scoring**, and **no app lock / unlock**.
-- The template folders are still at the repo root; moving them under `src/` is [architecture §5.1](docs/architecture.md#51-migrating-from-the-template-layout).
+- Layout: app code lives under `src/` and the `@/*` alias points to `./src/*` ([architecture §5.1](docs/architecture.md#51-migrating-from-the-template-layout)). Routes stay in `app/` at the repo root. The folder map is in [`AGENTS.md`](AGENTS.md#folder-layout).
+- Routes: every route in [architecture §3](docs/architecture.md#3-route-map-expo-router-root-app) exists. Tabs are **Learn**, **Review**, **Unlock**, **Settings**. The `(onboarding)` stack, **Unlock**, `practice/[sessionId]` and `practice/summary/[sessionId]` are placeholders that say they're not built yet, and the onboarding gate isn't wired up.
+- Learn shows the single course ("You speak English, you're learning Spanish") with a Continue button, then one **sample lesson**: the word "hola" ("hello"). Saving it marks it *ready to review* (not mastered), and the **Review** tab lists it (it used to be on the old Progress tab, which §3 doesn't have).
+- **What it doesn't do yet:** the learner store (`src/lib/learner-store.ts`) is **in memory only**, so everything is lost when the app restarts. There is only the sample lesson, with no real lesson list. There is **no audio** (no TTS, no mic), **no scoring**, **no review queue**, and **no app lock / unlock**.
 
 ## Next work, in order
 

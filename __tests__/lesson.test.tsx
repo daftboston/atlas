@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from '@testing-library/react-native';
 
-import LearnScreen from '@/app/(tabs)/index';
-import ProgressScreen from '@/app/(tabs)/progress';
+import LearnScreen from '../app/(tabs)/learn';
+import ReviewScreen from '../app/(tabs)/review';
 import { resetLearnerForTests, getLearnerSnapshot } from '@/lib/learner-store';
 
 describe('Sample lesson', () => {
@@ -45,7 +45,7 @@ describe('Sample lesson', () => {
     });
     expect(screen.getByRole('button', { name: 'Word saved' })).toBeDisabled();
 
-    await render(<ProgressScreen />);
+    await render(<ReviewScreen />);
     expect(screen.getByText('hola')).toBeOnTheScreen();
     expect(screen.getByText('hello · Ready to review')).toBeOnTheScreen();
   });

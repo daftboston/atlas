@@ -25,7 +25,7 @@ Run lint and typecheck before declaring any task done.
 
 ## Navigation & Routing
 
-- Use **Expo Router** for all navigation. Routes live in `app/` (repo root) — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils, tests) outside `app/`.
+- Use **Expo Router** for all navigation. Routes live in `app/` (repo root) — every file there is a screen, `_layout.tsx` files define navigators. Keep non-route code (components, hooks, utils, tests) outside `app/`, under `src/` (see the folder layout below).
 - Import `Link`, `router`, and `useLocalSearchParams` from `expo-router`.
 - Docs: https://docs.expo.dev/router/introduction.md
 
@@ -52,3 +52,48 @@ Project-specific rules for this repo (override the generic guidance above where 
 - **Before declaring a task done**, run and pass: `npm run lint`, `npm run typecheck`, `npm test` (and `npm run doctor` after dependency changes).
 - **No new dependencies without lead approval.** When a dependency is approved, add it with `npx expo install`. `expo-sqlite`, `drizzle-orm` and `drizzle-kit` (dev) are approved for on-device persistence.
 - Node 22 (`.nvmrc`); install with `npm ci`.
+
+### Folder layout
+
+This is the target layout from [architecture §5](docs/architecture.md#5-folder-convention). Put new code where it says; folders are created as the work that needs them lands. The `@/*` import alias points to `./src/*` (`tsconfig.json`; Jest picks it up through `jest-expo`).
+
+```
+app/                        Routes only. Thin: compose components, call state hooks.
+src/
+  components/
+    ui/                     Primitives (Button, Card, ProgressRing). NativeWind only.
+    practice/               MicButton, PromptCard, WordDiff, FeedbackPanel, SessionProgress.
+    unlock/                 GrantCard, ScreenTimeStatus.
+  state/                    sessionStore.ts, settingsStore.ts, unlockStore.ts
+  domain/
+    types.ts                Shared domain types (mirrors learning-loop entities).
+    scheduler/              fsrs.ts (wraps ts-fsrs), grading.ts (score → rating)
+    session/                buildSession.ts, sessionRules.ts
+    scoring/                textMatch.ts (engine-independent baseline scorer, language-agnostic)
+    language/               types.ts (LanguageProfile), registry.ts, profiles/es.ts (v0), profiles/fr.ts (test fixture). See §10
+    unlock/                 unlockRules.ts
+    memory/                 promotion.ts (Long-Term Memory criteria)
+    config.ts               All tunable constants in one place (thresholds, limits, durations).
+  data/
+    db.ts                   Opens expo-sqlite, applies Drizzle migrations.
+    schema.ts               Drizzle tables (learning-loop §3).
+    migrations/             drizzle-kit output, committed.
+    repositories/           knowledgeRepo.ts, queueRepo.ts, sessionRepo.ts, attemptRepo.ts, unlockRepo.ts, settingsRepo.ts
+    seed/                   loadSeed.ts (idempotent, keyed by seedId). Imports `content/seed/seed-phrases-v0.json` from the repo root (schema: learning-loop §11)
+  services/
+    registry.ts
+    speech/                 types.ts, mock.ts, ios.ts (later cloud.ts)
+    screenTime/             types.ts, stub.ts (later ios.ts)
+  lib/                      time.ts (local-day boundary), id.ts (UUIDs via expo-crypto), text.ts (normalize)
+modules/                    Expo local native modules (future: atlas-speech, atlas-screen-time)
+docs/
+```
+
+Template-era code that was moved under `src/` as-is (architecture §5.1) and is not in the map above yet:
+
+- `src/components/` also holds the template's `Themed.tsx`, `useColorScheme.ts`, `useClientOnlyValue.ts` (+ `.web.ts` variants), plus `LanguageSetup.tsx`, `SampleLesson.tsx` and `Placeholder.tsx` (stand-in for routes that aren't built yet).
+- `src/constants/Colors.ts` (template theme colors).
+- `src/content/sample-lesson.ts` (the one sample lesson). The seed deck stays in `content/seed/` at the repo root.
+- `src/lib/learner-store.ts` (in-memory learner store, to be replaced by persistence).
+
+Route tests live in `__tests__/` at the repo root, because Expo Router treats every file in `app/` as a route. Everything else is colocated as `*.test.ts`.
