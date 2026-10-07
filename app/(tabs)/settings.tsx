@@ -2,7 +2,7 @@ import { Pressable, StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { languageLabel } from '@/content/sample-lesson';
-import { clearProfile, useLearner } from '@/lib/learner-store';
+import { clearProfile, useLearner } from '@/state/learnerStore';
 
 export default function SettingsScreen() {
   const { profile } = useLearner();

@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
-import { useLearner } from '@/lib/learner-store';
+import { useLearner } from '@/state/learnerStore';
 
 // Saved words live on Review (architecture §3 has no Progress tab). The due
 // queue, upcoming load and mastered count arrive with FSRS scheduling.

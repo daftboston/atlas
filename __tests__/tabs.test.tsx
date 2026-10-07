@@ -1,6 +1,12 @@
 import { fireEvent, renderRouter, screen } from 'expo-router/testing-library';
 
-import { resetLearnerForTests } from '@/lib/learner-store';
+import { hydrateLearner } from '@/state/learnerStore';
+
+import { createMemoryLearnerRepository } from './support/memoryLearnerRepo';
+
+// The real root layout opens expo-sqlite, which Jest can't run. Skip startup and
+// hydrate the learner store from an in-memory repository instead.
+jest.mock('@/state/bootstrap', () => ({ useAppBootstrap: () => ({ ready: true, error: null }) }));
 
 // Render the real app/ tree (root layout included), not a mock file system.
 // renderRouter resolves this path from the working directory (the repo root under
@@ -18,8 +24,8 @@ async function openApp(initialUrl: string) {
 }
 
 describe('Tabs (architecture §3)', () => {
-  beforeEach(() => {
-    resetLearnerForTests();
+  beforeEach(async () => {
+    await hydrateLearner(createMemoryLearnerRepository());
   });
 
   it('opens on Learn from the root URL', async () => {

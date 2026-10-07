@@ -28,6 +28,7 @@ Cloud alternative (requires an Expo account and linking the project with EAS): `
 | `npm run lint`      | ESLint (`expo lint`, eslint-config-expo)       |
 | `npm run typecheck` | TypeScript (`tsc --noEmit`)                    |
 | `npm test`          | Jest (jest-expo preset + Testing Library)      |
+| `npm run db:generate` | Generate a Drizzle migration after editing `src/data/schema.ts` |
 | `npm run doctor`    | `expo-doctor` dependency/config checks         |
 
 CI is not set up yet. Until it is, run `npm run lint`, `npm run typecheck` and `npm test` locally before every pull request.
