@@ -1,6 +1,5 @@
-// Drizzle tables for learning-loop §3. Only the tables the app uses today exist;
-// the rest (review_queue, review_logs, sessions, attempts, feedback, unlock_grants)
-// arrive with the work that needs them.
+// Drizzle tables for learning-loop §3. Only the tables the app uses today exist.
+// review_queue, review_logs, and unlock_grants arrive with the scheduler and unlocks.
 // Conventions (§3): UUID text ids, integer ms (UTC) timestamps, text enums with CHECK.
 // Text primary keys are declared NOT NULL explicitly: SQLite otherwise lets a
 // non-INTEGER primary key hold NULL. drizzle-kit 0.31 emits NOT NULL for primary keys
@@ -8,12 +7,18 @@
 import { sql, type SQL } from 'drizzle-orm';
 import { check, integer, real, sqliteTable, text, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 
+import type { WordScore } from '@/domain/scoring/types';
 import {
+  ATTEMPT_STATUSES,
   CEFR_LEVELS,
+  INPUT_MODES,
   ITEM_KINDS,
   KNOWLEDGE_ITEM_STATUSES,
+  PROMPT_TYPES,
   SAVED_WORD_DIFFICULTIES,
   SAVED_WORD_STATUSES,
+  SESSION_MODES,
+  SESSION_STATUSES,
 } from '@/domain/types';
 
 function oneOf(column: AnySQLiteColumn, values: readonly string[]): SQL {
@@ -99,4 +104,74 @@ export const savedWords = sqliteTable(
     check('saved_words_difficulty_check', oneOf(t.difficulty, SAVED_WORD_DIFFICULTIES)),
     check('saved_words_status_check', oneOf(t.status, SAVED_WORD_STATUSES)),
   ],
+);
+
+/** learning-loop §3.4 */
+export const practiceSessions = sqliteTable(
+  'practice_sessions',
+  {
+    id: text('id').primaryKey().notNull(),
+    startedAt: integer('started_at').notNull(),
+    endedAt: integer('ended_at'),
+    mode: text('mode', { enum: SESSION_MODES }).notNull(),
+    status: text('status', { enum: SESSION_STATUSES }).notNull(),
+    plannedItemIds: text('planned_item_ids', { mode: 'json' }).$type<string[]>().notNull(),
+    cursor: integer('cursor').notNull(),
+  },
+  (t) => [
+    check('practice_sessions_mode_check', oneOf(t.mode, SESSION_MODES)),
+    check('practice_sessions_status_check', oneOf(t.status, SESSION_STATUSES)),
+  ],
+);
+
+/** learning-loop §3.5 */
+export const practiceAttempts = sqliteTable(
+  'practice_attempts',
+  {
+    id: text('id').primaryKey().notNull(),
+    sessionId: text('session_id')
+      .notNull()
+      .references(() => practiceSessions.id, { onDelete: 'cascade' }),
+    itemId: text('item_id')
+      .notNull()
+      .references(() => knowledgeItems.id),
+    promptType: text('prompt_type', { enum: PROMPT_TYPES }).notNull(),
+    inputMode: text('input_mode', { enum: INPUT_MODES }).notNull(),
+    tryNumber: integer('try_number').notNull(),
+    status: text('status', { enum: ATTEMPT_STATUSES }).notNull(),
+    transcript: text('transcript'),
+    durationMs: integer('duration_ms'),
+    error: text('error'),
+    graded: integer('graded', { mode: 'boolean' }).notNull(),
+    startedAt: integer('started_at').notNull(),
+    endedAt: integer('ended_at'),
+  },
+  (t) => [
+    check('practice_attempts_prompt_type_check', oneOf(t.promptType, PROMPT_TYPES)),
+    check('practice_attempts_input_mode_check', oneOf(t.inputMode, INPUT_MODES)),
+    check('practice_attempts_status_check', oneOf(t.status, ATTEMPT_STATUSES)),
+  ],
+);
+
+/** learning-loop §3.6. One row per scored attempt. */
+export const feedback = sqliteTable(
+  'feedback',
+  {
+    id: text('id').primaryKey().notNull(),
+    attemptId: text('attempt_id')
+      .notNull()
+      .unique()
+      .references(() => practiceAttempts.id, { onDelete: 'cascade' }),
+    overall: real('overall').notNull(),
+    accuracy: real('accuracy').notNull(),
+    pronunciation: real('pronunciation'),
+    wordsJson: text('words_json', { mode: 'json' }).$type<WordScore[]>().notNull(),
+    method: text('method').notNull(),
+    matchedText: text('matched_text').notNull(),
+    accentHintsJson: text('accent_hints_json', { mode: 'json' }).$type<string[]>().notNull(),
+    rating: integer('rating'),
+    hintKey: text('hint_key'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (t) => [check('feedback_method_check', sql`${t.method} = 'text-match'`)],
 );

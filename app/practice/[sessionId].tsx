@@ -1,11 +1,9 @@
-import { Placeholder } from '@/components/Placeholder';
+import { useLocalSearchParams } from 'expo-router';
 
-export default function PracticeSessionScreen() {
-  return (
-    <Placeholder
-      title="Practice"
-      purpose="A practice session: hear a prompt, say it aloud, get feedback, then move to the next one."
-      next={{ href: '/(tabs)/learn', label: 'Back to Learn' }}
-    />
-  );
+import { PracticeSession } from '@/components/practice/PracticeSession';
+
+export default function PracticeSessionRoute() {
+  const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
+  const id = Array.isArray(sessionId) ? sessionId[0] : sessionId;
+  return <PracticeSession sessionId={id ?? ''} />;
 }

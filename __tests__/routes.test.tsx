@@ -25,12 +25,20 @@ describe('Route map (architecture §3)', () => {
     ['/first-session', 'First session'],
     ['/habit', 'Daily habit'],
     ['/done', 'All set'],
-    ['/practice/abc', 'Practice'],
-    ['/practice/summary/abc', 'Session summary'],
   ])('%s renders a placeholder', async (url, title) => {
     await renderRouter(appDir, { initialUrl: url });
 
     expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
     expect(screen.getByText('Not built yet. This screen is a placeholder.')).toBeOnTheScreen();
+  });
+
+  it.each([
+    ['/practice/abc', 'Practice'],
+    ['/practice/summary/abc', 'Summary'],
+  ])('%s says the session is not on this device', async (url, title) => {
+    await renderRouter(appDir, { initialUrl: url });
+
+    expect(screen.getByRole('header', { name: title })).toBeOnTheScreen();
+    expect(screen.getByText("This session isn't on this device.")).toBeOnTheScreen();
   });
 });

@@ -1,11 +1,9 @@
-import { Placeholder } from '@/components/Placeholder';
+import { useLocalSearchParams } from 'expo-router';
 
-export default function SessionSummaryScreen() {
-  return (
-    <Placeholder
-      title="Session summary"
-      purpose="Your session results, and any unlock you earned."
-      next={{ href: '/(tabs)/learn', label: 'Done' }}
-    />
-  );
+import { SessionSummary } from '@/components/practice/SessionSummary';
+
+export default function SessionSummaryRoute() {
+  const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
+  const id = Array.isArray(sessionId) ? sessionId[0] : sessionId;
+  return <SessionSummary sessionId={id ?? ''} />;
 }
