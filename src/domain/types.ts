@@ -33,6 +33,13 @@ export const KNOWLEDGE_ITEM_STATUSES = [
 ] as const;
 export type KnowledgeItemStatus = (typeof KNOWLEDGE_ITEM_STATUSES)[number];
 
+/** learning-loop §3.2. Names match the ts-fsrs `State` enum. */
+export const FSRS_STATES = ['New', 'Learning', 'Review', 'Relearning'] as const;
+export type FsrsStateName = (typeof FSRS_STATES)[number];
+
+/** Again, Hard, Good, Easy. Manual (0) is not a grade. */
+export type FsrsRating = 1 | 2 | 3 | 4;
+
 /** learning-loop §3.1 */
 export type KnowledgeItem = {
   id: string;
@@ -133,7 +140,7 @@ export type PracticeAttempt = {
   transcript: string | null;
   durationMs: number | null;
   error: string | null;
-  /** True only for the attempt that updates the scheduler. Slice 3 does not grade. */
+  /** True only for the attempt that updates the scheduler. Retries and technical failures stay false. */
   graded: boolean;
   startedAt: number;
   endedAt: number | null;

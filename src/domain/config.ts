@@ -31,3 +31,12 @@ export const UNLOCK_ONBOARDING_MIN_GRADED_ATTEMPTS = 3;
 
 export const MASTERED_STABILITY_DAYS = 60;
 export const MASTERED_MAX_LAPSES = 3;
+
+/** learning-loop §5.1. More due than this, and a daily session adds no new items. */
+export const DUE_BACKLOG_LIMIT = 30;
+
+/** Review tab window after now. Due items are listed separately. */
+export const REVIEW_HORIZON_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** learning-loop §3.8. FSRS `request_retention` when the setting is unset. */
+export const DEFAULT_DESIRED_RETENTION = 0.9;

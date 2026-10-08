@@ -37,7 +37,11 @@ export function SessionSummary({ sessionId }: { sessionId: string }) {
       <Text style={styles.copy}>
         {matched} of {view.steps.length} steps matched.
       </Text>
-      <Text style={styles.copy}>These phrases are not mastered.</Text>
+      <Text style={styles.copy}>
+        {view.masteredCount === 0
+          ? 'These phrases are not mastered.'
+          : `${view.masteredCount} ${view.masteredCount === 1 ? 'phrase is' : 'phrases are'} mastered.`}
+      </Text>
       {abandoned ? <Text style={styles.copy}>This session was abandoned. The answers you gave stay saved.</Text> : null}
       <Text style={styles.note}>No unlock was earned. Unlocks come later.</Text>
       <Pressable

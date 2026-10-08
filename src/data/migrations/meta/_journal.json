@@ -15,6 +15,13 @@
       "when": 1791425876475,
       "tag": "0001_kind_talisman",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1791427332950,
+      "tag": "0002_quick_ultimo",
+      "breakpoints": true
     }
   ]
 }

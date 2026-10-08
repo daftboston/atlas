@@ -1,16 +1,17 @@
-// Drizzle tables for learning-loop §3. Only the tables the app uses today exist.
-// review_queue, review_logs, and unlock_grants arrive with the scheduler and unlocks.
+// Drizzle tables for learning-loop §3. unlock_grants arrives with the unlock timer.
 // Conventions (§3): UUID text ids, integer ms (UTC) timestamps, text enums with CHECK.
 // Text primary keys are declared NOT NULL explicitly: SQLite otherwise lets a
 // non-INTEGER primary key hold NULL. drizzle-kit 0.31 emits NOT NULL for primary keys
 // on its own, but 1.0 RCs don't, so the schema states it rather than relying on the kit.
 import { sql, type SQL } from 'drizzle-orm';
-import { check, integer, real, sqliteTable, text, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
+import { check, index, integer, real, sqliteTable, text, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 
+import type { SessionStep } from '@/domain/session/buildSession';
 import type { WordScore } from '@/domain/scoring/types';
 import {
   ATTEMPT_STATUSES,
   CEFR_LEVELS,
+  FSRS_STATES,
   INPUT_MODES,
   ITEM_KINDS,
   KNOWLEDGE_ITEM_STATUSES,
@@ -116,6 +117,8 @@ export const practiceSessions = sqliteTable(
     mode: text('mode', { enum: SESSION_MODES }).notNull(),
     status: text('status', { enum: SESSION_STATUSES }).notNull(),
     plannedItemIds: text('planned_item_ids', { mode: 'json' }).$type<string[]>().notNull(),
+    /** Null on sessions created before steps were stored. Those sessions were all new items. */
+    plannedSteps: text('planned_steps', { mode: 'json' }).$type<SessionStep[] | null>(),
     cursor: integer('cursor').notNull(),
   },
   (t) => [
@@ -173,5 +176,60 @@ export const feedback = sqliteTable(
     hintKey: text('hint_key'),
     createdAt: integer('created_at').notNull(),
   },
-  (t) => [check('feedback_method_check', sql`${t.method} = 'text-match'`)],
+  (t) => [
+    check('feedback_method_check', sql`${t.method} = 'text-match'`),
+    check('feedback_rating_check', sql`${t.rating} IS NULL OR ${t.rating} BETWEEN 1 AND 4`),
+  ],
+);
+
+/** learning-loop §3.2. One card per item. `learning_steps` is the ts-fsrs step index. */
+export const reviewQueue = sqliteTable(
+  'review_queue',
+  {
+    itemId: text('item_id')
+      .primaryKey()
+      .notNull()
+      .references(() => knowledgeItems.id, { onDelete: 'cascade' }),
+    due: integer('due').notNull(),
+    stability: real('stability').notNull(),
+    difficulty: real('difficulty').notNull(),
+    elapsedDays: real('elapsed_days').notNull(),
+    scheduledDays: real('scheduled_days').notNull(),
+    learningSteps: integer('learning_steps').notNull(),
+    reps: integer('reps').notNull(),
+    lapses: integer('lapses').notNull(),
+    fsrsState: text('fsrs_state', { enum: FSRS_STATES }).notNull(),
+    lastReviewAt: integer('last_review_at'),
+  },
+  (t) => [
+    index('review_queue_due_idx').on(t.due),
+    check('review_queue_fsrs_state_check', oneOf(t.fsrsState, FSRS_STATES)),
+  ],
+);
+
+/** learning-loop §3.3. Append-only. The numbers are the card before this review. */
+export const reviewLogs = sqliteTable(
+  'review_logs',
+  {
+    id: text('id').primaryKey().notNull(),
+    itemId: text('item_id')
+      .notNull()
+      .references(() => knowledgeItems.id),
+    attemptId: text('attempt_id')
+      .notNull()
+      .unique()
+      .references(() => practiceAttempts.id, { onDelete: 'cascade' }),
+    rating: integer('rating').notNull(),
+    fsrsStateBefore: text('fsrs_state_before', { enum: FSRS_STATES }).notNull(),
+    dueBefore: integer('due_before').notNull(),
+    stabilityBefore: real('stability_before').notNull(),
+    difficultyBefore: real('difficulty_before').notNull(),
+    elapsedDays: real('elapsed_days').notNull(),
+    scheduledDays: real('scheduled_days').notNull(),
+    reviewedAt: integer('reviewed_at').notNull(),
+  },
+  (t) => [
+    check('review_logs_rating_check', sql`${t.rating} BETWEEN 1 AND 4`),
+    check('review_logs_fsrs_state_before_check', oneOf(t.fsrsStateBefore, FSRS_STATES)),
+  ],
 );

@@ -24,6 +24,7 @@ function planInput(overrides: Partial<Parameters<typeof buildSession>[0]> = {}):
     sessionSize: 8,
     onboardingItemCount: 3,
     items: deck,
+    due: [],
     ...overrides,
   };
 }
@@ -68,6 +69,39 @@ describe('buildSession', () => {
       const recallAt = steps.findIndex((step) => step.itemId === itemId && step.promptType === 'recall-speak');
       expect(recallAt - listenAt).toBeGreaterThanOrEqual(2);
     }
+  });
+
+  it('reviews the most at-risk cards first and fills the remaining slots with new items', () => {
+    const result = plan({
+      sessionSize: 3,
+      due: [
+        { itemId: 'r1', retrievability: 0.8 },
+        { itemId: 'r2', retrievability: 0.2 },
+      ],
+    });
+    expect(result?.itemIds).toEqual(['r2', 'r1', 'a']);
+    expect(result?.steps.map((step) => step.promptType)).toEqual([
+      'recall-speak',
+      'recall-speak',
+      'listen-repeat',
+      'recall-speak',
+    ]);
+  });
+
+  it('adds no new items when more than 30 cards are due', () => {
+    const due = Array.from({ length: 31 }, (_, index) => ({ itemId: `d${index}`, retrievability: index / 100 }));
+    expect(plan({ sessionSize: 8, due })?.itemIds).toEqual(['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7']);
+    expect(plan({ sessionSize: 40, due })?.itemIds).toHaveLength(31);
+  });
+
+  it('review-only takes due cards and skips new items', () => {
+    expect(plan({ mode: 'review-only', due: [{ itemId: 'rev', retrievability: 0.4 }] })?.steps).toEqual([
+      { itemId: 'rev', promptType: 'recall-speak' },
+    ]);
+  });
+
+  it('onboarding stays three new items when reviews are due', () => {
+    expect(plan({ mode: 'onboarding', due: [{ itemId: 'rev', retrievability: 0.1 }] })?.itemIds).toEqual(['a', 'b', 'c']);
   });
 
   it('keeps a single item as listen then recall', () => {

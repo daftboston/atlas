@@ -46,6 +46,7 @@ function practiceRepo(): SessionRepository {
     home: () => ({
       activeSessionId: started && status === 'active' ? 's1' : null,
       newRemaining: 5,
+      dueCount: 0,
       caughtUp: false,
     }),
     start: () => {
@@ -70,6 +71,7 @@ function practiceRepo(): SessionRepository {
       speechLocale: 'es-MX',
       attempts: [...attempts],
       feedback: [...feedback],
+      masteredCount: 0,
     }),
     recordAttempt(input: RecordAttemptInput) {
       const id = `attempt-${attempts.length + 1}`;

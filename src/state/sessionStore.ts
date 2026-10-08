@@ -3,12 +3,14 @@ import { useSyncExternalStore } from 'react';
 import type { PracticeView, RecordAttemptInput, SessionHome, SessionRepository, StartResult } from '@/data/repositories/sessionRepo';
 import { deviceTimeZone } from '@/lib/time';
 
+import { refreshReview } from './reviewStore';
+
 export type SessionSnapshot = {
   ready: boolean;
   home: SessionHome;
 };
 
-const EMPTY_HOME: SessionHome = { activeSessionId: null, newRemaining: 0, caughtUp: false };
+const EMPTY_HOME: SessionHome = { activeSessionId: null, newRemaining: 0, dueCount: 0, caughtUp: false };
 
 let repository: SessionRepository | null = null;
 let snapshot: SessionSnapshot = { ready: false, home: EMPTY_HOME };
@@ -29,9 +31,10 @@ function repo(): SessionRepository {
   return repository;
 }
 
-function refresh(now: number) {
+function refresh(now = Date.now()) {
   if (!repository) return;
   publish({ ready: true, home: repository.home(now, deviceTimeZone()) });
+  refreshReview(now);
 }
 
 export function hydrateSession(next: SessionRepository, now = Date.now()) {
@@ -54,6 +57,12 @@ export function startDailySession(now = Date.now()): StartResult {
   return result;
 }
 
+export function startReviewSession(now = Date.now()): StartResult {
+  const result = repo().start('review-only', now, deviceTimeZone());
+  refresh(now);
+  return result;
+}
+
 /** Read a session without publishing. Safe to call while drawing a screen. */
 export function readPractice(sessionId: string): PracticeView | null {
   if (!repository) return null;
@@ -72,6 +81,7 @@ export function refreshSessionHome(now = Date.now()) {
 
 export function saveAttempt(input: RecordAttemptInput) {
   repo().recordAttempt(input);
+  refresh();
 }
 
 export function advanceSession(sessionId: string, now = Date.now()) {

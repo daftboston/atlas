@@ -31,9 +31,16 @@ export function SessionHome() {
         <Text style={styles.copy}>All caught up</Text>
       ) : (
         <>
-          <Text style={styles.copy}>
-            {home.newRemaining} new {home.newRemaining === 1 ? 'phrase' : 'phrases'} left today
-          </Text>
+          {home.dueCount > 0 ? (
+            <Text style={styles.copy}>
+              {home.dueCount} due
+            </Text>
+          ) : null}
+          {home.newRemaining > 0 ? (
+            <Text style={styles.copy}>
+              {home.newRemaining} new {home.newRemaining === 1 ? 'phrase' : 'phrases'} left today
+            </Text>
+          ) : null}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Start session"

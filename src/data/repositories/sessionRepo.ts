@@ -1,11 +1,15 @@
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
 
-import { DAILY_NEW_LIMIT, ONBOARDING_ITEM_COUNT, SESSION_SIZE } from '@/domain/config';
-import { buildSession, dailyNewRemaining, interleaveNewItems, type SessionStep } from '@/domain/session/buildSession';
+import { DAILY_NEW_LIMIT, DEFAULT_DESIRED_RETENTION, ONBOARDING_ITEM_COUNT, SESSION_SIZE } from '@/domain/config';
+import { itemStatusAfterGrade } from '@/domain/memory/promotion';
+import { gradeAttempt } from '@/domain/scheduler/grading';
+import { initCard, retrievability, schedule, type QueueCard } from '@/domain/scheduler/fsrs';
+import { buildSession, dailyNewRemaining, sessionSteps, type SessionStep } from '@/domain/session/buildSession';
 import { isSessionStale } from '@/domain/session/sessionRules';
 import type { TextMatchResult } from '@/domain/scoring/types';
 import type {
   AttemptFeedback,
+  FsrsStateName,
   InputMode,
   PracticeAttempt,
   PracticeSession,
@@ -15,7 +19,7 @@ import type {
 import { newId } from '@/lib/id';
 
 import type { AtlasDatabase } from '../client';
-import { courses, feedback, knowledgeItems, practiceAttempts, practiceSessions } from '../schema';
+import { courses, feedback, knowledgeItems, practiceAttempts, practiceSessions, reviewLogs, reviewQueue } from '../schema';
 import { createSettingsRepo } from './settingsRepo';
 
 export type StepView = SessionStep & {
@@ -33,11 +37,13 @@ export type PracticeView = {
   speechLocale: string;
   attempts: PracticeAttempt[];
   feedback: AttemptFeedback[];
+  masteredCount: number;
 };
 
 export type SessionHome = {
   activeSessionId: string | null;
   newRemaining: number;
+  dueCount: number;
   caughtUp: boolean;
 };
 
@@ -63,8 +69,34 @@ type AttemptRow = typeof practiceAttempts.$inferSelect;
 type FeedbackRow = typeof feedback.$inferSelect;
 
 export function createSessionRepo(db: AtlasDatabase) {
-  function sessionRow(id: string): PracticeSession | null {
+  function sessionRow(id: string) {
     return db.select().from(practiceSessions).where(eq(practiceSessions.id, id)).get() ?? null;
+  }
+
+  function dueCandidates(now: number) {
+    const retention = createSettingsRepo(db).get('desiredRetention') ?? DEFAULT_DESIRED_RETENTION;
+    return db
+      .select({
+        due: reviewQueue.due,
+        stability: reviewQueue.stability,
+        difficulty: reviewQueue.difficulty,
+        elapsedDays: reviewQueue.elapsedDays,
+        scheduledDays: reviewQueue.scheduledDays,
+        learningSteps: reviewQueue.learningSteps,
+        reps: reviewQueue.reps,
+        lapses: reviewQueue.lapses,
+        fsrsState: reviewQueue.fsrsState,
+        lastReviewAt: reviewQueue.lastReviewAt,
+        itemId: reviewQueue.itemId,
+      })
+      .from(reviewQueue)
+      .innerJoin(knowledgeItems, eq(knowledgeItems.id, reviewQueue.itemId))
+      .where(and(lte(reviewQueue.due, now), sql`${knowledgeItems.status} NOT IN ('new', 'suspended')`))
+      .all()
+      .map((row) => ({
+        itemId: row.itemId,
+        retrievability: retrievability(toCard(row), now, retention),
+      }));
   }
 
   function activeSession(): PracticeSession | null {
@@ -95,6 +127,7 @@ export function createSessionRepo(db: AtlasDatabase) {
       sessionSize: settings.get('sessionSize') ?? SESSION_SIZE,
       onboardingItemCount: ONBOARDING_ITEM_COUNT,
       items,
+      due: dueCandidates(now),
     };
   }
 
@@ -114,15 +147,18 @@ export function createSessionRepo(db: AtlasDatabase) {
       this.abandonStale(now);
       const active = activeSession();
       const courseId = createSettingsRepo(db).get('activeCourseId');
-      const remaining = dailyNewRemaining(limits(courseId, now, timeZone, 'daily'));
+      const planInput = limits(courseId, now, timeZone, 'daily');
+      const remaining = dailyNewRemaining(planInput);
+      const dueCount = planInput.due.length;
       return {
         activeSessionId: active?.id ?? null,
         newRemaining: remaining,
-        caughtUp: active === null && remaining === 0,
+        dueCount,
+        caughtUp: active === null && remaining === 0 && dueCount === 0,
       };
     },
 
-    start(mode: Exclude<SessionMode, 'review-only'>, now: number, timeZone: string): StartResult {
+    start(mode: SessionMode, now: number, timeZone: string): StartResult {
       this.abandonStale(now);
       const active = activeSession();
       if (active) return { kind: 'resumed', id: active.id };
@@ -140,6 +176,7 @@ export function createSessionRepo(db: AtlasDatabase) {
           mode: plan.mode,
           status: 'active',
           plannedItemIds: plan.itemIds,
+          plannedSteps: plan.steps,
           cursor: 0,
         })
         .run();
@@ -166,6 +203,7 @@ export function createSessionRepo(db: AtlasDatabase) {
           reading: knowledgeItems.reading,
           romanization: knowledgeItems.romanization,
           notes: knowledgeItems.notes,
+          status: knowledgeItems.status,
           speechLocale: courses.speechLocale,
         })
         .from(knowledgeItems)
@@ -173,7 +211,7 @@ export function createSessionRepo(db: AtlasDatabase) {
         .where(inArray(knowledgeItems.id, session.plannedItemIds))
         .all();
       const byId = new Map(rows.map((row) => [row.id, row]));
-      const steps: StepView[] = interleaveNewItems(session.plannedItemIds).map((step) => {
+      const steps: StepView[] = sessionSteps(session.plannedItemIds, session.plannedSteps).map((step) => {
         const item = byId.get(step.itemId);
         if (!item) throw new Error(`Session item ${step.itemId} is missing`);
         return {
@@ -202,17 +240,25 @@ export function createSessionRepo(db: AtlasDatabase) {
           ? []
           : db.select().from(feedback).where(inArray(feedback.attemptId, attemptIds)).all();
 
-      return { session, steps, speechLocale, attempts, feedback: feedbackRows.map(toFeedback) };
+      return {
+        session,
+        steps,
+        speechLocale,
+        attempts,
+        feedback: feedbackRows.map(toFeedback),
+        masteredCount: rows.filter((row) => row.status === 'mastered').length,
+      };
     },
 
     /**
-     * Attempt and feedback commit together. A failure while writing feedback
-     * leaves no attempt row.
+     * Attempt, feedback, and a try-1 grade commit together. A failure while
+     * writing feedback leaves no attempt and no card.
      */
     recordAttempt(input: RecordAttemptInput) {
+      const retention = createSettingsRepo(db).get('desiredRetention') ?? DEFAULT_DESIRED_RETENTION;
       db.transaction((tx) => {
         const prior = tx
-          .select({ id: practiceAttempts.id })
+          .select({ status: practiceAttempts.status })
           .from(practiceAttempts)
           .where(
             and(
@@ -222,6 +268,8 @@ export function createSessionRepo(db: AtlasDatabase) {
             ),
           )
           .all();
+        const nonFailed = prior.filter((row) => row.status !== 'failed').length;
+        const tryNumber = input.status === 'failed' ? 0 : nonFailed + 1;
         const attemptId = newId();
         tx.insert(practiceAttempts)
           .values({
@@ -230,7 +278,7 @@ export function createSessionRepo(db: AtlasDatabase) {
             itemId: input.itemId,
             promptType: input.promptType,
             inputMode: input.inputMode,
-            tryNumber: prior.length + 1,
+            tryNumber,
             status: input.status,
             transcript: input.transcript,
             durationMs: null,
@@ -240,10 +288,87 @@ export function createSessionRepo(db: AtlasDatabase) {
             endedAt: input.endedAt,
           })
           .run();
-        tx.update(knowledgeItems)
-          .set({ introducedAt: input.startedAt, updatedAt: input.startedAt })
-          .where(and(eq(knowledgeItems.id, input.itemId), isNull(knowledgeItems.introducedAt)))
-          .run();
+        if (input.status !== 'failed') {
+          tx.update(knowledgeItems)
+            .set({ introducedAt: input.startedAt, updatedAt: input.startedAt })
+            .where(and(eq(knowledgeItems.id, input.itemId), isNull(knowledgeItems.introducedAt)))
+            .run();
+        }
+        const rating = gradeAttempt({
+          status: input.status,
+          promptType: input.promptType,
+          inputMode: input.inputMode,
+          tryNumber,
+          overall: input.score?.overall ?? null,
+        });
+        if (rating !== null) {
+          const item = tx.select().from(knowledgeItems).where(eq(knowledgeItems.id, input.itemId)).get();
+          if (!item) throw new Error(`Item ${input.itemId} is missing`);
+          const existing = tx.select().from(reviewQueue).where(eq(reviewQueue.itemId, input.itemId)).get();
+          const before = existing ? toCard(existing) : initCard(input.startedAt);
+          const scheduled = schedule(before, rating, input.endedAt, retention);
+          const nextStatus = itemStatusAfterGrade({
+            status: item.status,
+            fsrsState: scheduled.card.state,
+            rating,
+            stabilityDays: scheduled.card.stability,
+            lapses: scheduled.card.lapses,
+          });
+          tx.insert(reviewQueue)
+            .values({
+              itemId: input.itemId,
+              due: scheduled.card.due,
+              stability: scheduled.card.stability,
+              difficulty: scheduled.card.difficulty,
+              elapsedDays: scheduled.card.elapsedDays,
+              scheduledDays: scheduled.card.scheduledDays,
+              learningSteps: scheduled.card.learningSteps,
+              reps: scheduled.card.reps,
+              lapses: scheduled.card.lapses,
+              fsrsState: scheduled.card.state,
+              lastReviewAt: scheduled.card.lastReviewAt,
+            })
+            .onConflictDoUpdate({
+              target: reviewQueue.itemId,
+              set: {
+                due: scheduled.card.due,
+                stability: scheduled.card.stability,
+                difficulty: scheduled.card.difficulty,
+                elapsedDays: scheduled.card.elapsedDays,
+                scheduledDays: scheduled.card.scheduledDays,
+                learningSteps: scheduled.card.learningSteps,
+                reps: scheduled.card.reps,
+                lapses: scheduled.card.lapses,
+                fsrsState: scheduled.card.state,
+                lastReviewAt: scheduled.card.lastReviewAt,
+              },
+            })
+            .run();
+          tx.insert(reviewLogs)
+            .values({
+              id: newId(),
+              itemId: input.itemId,
+              attemptId,
+              rating,
+              fsrsStateBefore: scheduled.log.stateBefore,
+              dueBefore: scheduled.log.dueBefore,
+              stabilityBefore: scheduled.log.stabilityBefore,
+              difficultyBefore: scheduled.log.difficultyBefore,
+              elapsedDays: scheduled.log.elapsedDays,
+              scheduledDays: scheduled.log.scheduledDays,
+              reviewedAt: scheduled.log.reviewedAt,
+            })
+            .run();
+          tx.update(knowledgeItems)
+            .set({
+              status: nextStatus,
+              masteredAt: nextStatus === 'mastered' && item.status !== 'mastered' ? input.endedAt : item.masteredAt,
+              updatedAt: input.endedAt,
+            })
+            .where(eq(knowledgeItems.id, input.itemId))
+            .run();
+          tx.update(practiceAttempts).set({ graded: true }).where(eq(practiceAttempts.id, attemptId)).run();
+        }
         if (!input.score) return;
         tx.insert(feedback)
           .values({
@@ -256,7 +381,7 @@ export function createSessionRepo(db: AtlasDatabase) {
             method: input.score.method,
             matchedText: input.score.matchedText,
             accentHintsJson: input.score.accentHints,
-            rating: null,
+            rating,
             hintKey: input.hint,
             createdAt: input.endedAt,
           })
@@ -268,7 +393,7 @@ export function createSessionRepo(db: AtlasDatabase) {
       const session = sessionRow(sessionId);
       if (!session || session.status !== 'active') throw new Error(`Session ${sessionId} is not active`);
       const next = session.cursor + 1;
-      const done = next >= interleaveNewItems(session.plannedItemIds).length;
+      const done = next >= sessionSteps(session.plannedItemIds, session.plannedSteps).length;
       db.update(practiceSessions)
         .set(done ? { cursor: next, status: 'completed', endedAt: now } : { cursor: next })
         .where(eq(practiceSessions.id, sessionId))
@@ -282,6 +407,32 @@ export function createSessionRepo(db: AtlasDatabase) {
         .where(and(eq(practiceSessions.id, sessionId), eq(practiceSessions.status, 'active')))
         .run();
     },
+  };
+}
+
+function toCard(row: {
+  due: number;
+  stability: number;
+  difficulty: number;
+  elapsedDays: number;
+  scheduledDays: number;
+  learningSteps: number;
+  reps: number;
+  lapses: number;
+  fsrsState: FsrsStateName;
+  lastReviewAt: number | null;
+}): QueueCard {
+  return {
+    due: row.due,
+    stability: row.stability,
+    difficulty: row.difficulty,
+    elapsedDays: row.elapsedDays,
+    scheduledDays: row.scheduledDays,
+    learningSteps: row.learningSteps,
+    reps: row.reps,
+    lapses: row.lapses,
+    state: row.fsrsState,
+    lastReviewAt: row.lastReviewAt,
   };
 }
 
