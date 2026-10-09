@@ -1,6 +1,7 @@
 import { and, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
 
 import { DAILY_NEW_LIMIT, DEFAULT_DESIRED_RETENTION, ONBOARDING_ITEM_COUNT, SESSION_SIZE } from '@/domain/config';
+import { decideUnlock, type UnlockDecision } from '@/domain/unlock/unlockRules';
 import { itemStatusAfterGrade } from '@/domain/memory/promotion';
 import { gradeAttempt } from '@/domain/scheduler/grading';
 import { initCard, retrievability, schedule, type QueueCard } from '@/domain/scheduler/fsrs';
@@ -17,9 +18,10 @@ import type {
   SessionMode,
 } from '@/domain/types';
 import { newId } from '@/lib/id';
+import { deviceTimeZone, localDayStartMs, nextRolloverMs } from '@/lib/time';
 
 import type { AtlasDatabase } from '../client';
-import { courses, feedback, knowledgeItems, practiceAttempts, practiceSessions, reviewLogs, reviewQueue } from '../schema';
+import { courses, feedback, knowledgeItems, practiceAttempts, practiceSessions, reviewLogs, reviewQueue, unlockGrants } from '../schema';
 import { createSettingsRepo } from './settingsRepo';
 
 export type StepView = SessionStep & {
@@ -38,6 +40,7 @@ export type PracticeView = {
   attempts: PracticeAttempt[];
   feedback: AttemptFeedback[];
   masteredCount: number;
+  unlock: UnlockDecision | { kind: 'not-earned' };
 };
 
 export type SessionHome = {
@@ -187,10 +190,10 @@ export function createSessionRepo(db: AtlasDatabase) {
     touch(sessionId: string, now: number): PracticeView | null {
       const existing = sessionRow(sessionId);
       if (existing?.status === 'active' && isSessionStale(existing.startedAt, now)) this.abandon(sessionId, now);
-      return this.getPractice(sessionId);
+      return this.getPractice(sessionId, now);
     },
 
-    getPractice(sessionId: string): PracticeView | null {
+    getPractice(sessionId: string, now = Date.now(), timeZone = deviceTimeZone()): PracticeView | null {
       const session = sessionRow(sessionId);
       if (!session) return null;
 
@@ -247,6 +250,7 @@ export function createSessionRepo(db: AtlasDatabase) {
         attempts,
         feedback: feedbackRows.map(toFeedback),
         masteredCount: rows.filter((row) => row.status === 'mastered').length,
+        unlock: unlockFor(db, session, now, timeZone),
       };
     },
 
@@ -389,16 +393,43 @@ export function createSessionRepo(db: AtlasDatabase) {
       });
     },
 
-    advance(sessionId: string, now: number): 'active' | 'completed' {
+    advance(sessionId: string, now: number, timeZone = deviceTimeZone()): 'active' | 'completed' {
       const session = sessionRow(sessionId);
       if (!session || session.status !== 'active') throw new Error(`Session ${sessionId} is not active`);
       const next = session.cursor + 1;
       const done = next >= sessionSteps(session.plannedItemIds, session.plannedSteps).length;
-      db.update(practiceSessions)
-        .set(done ? { cursor: next, status: 'completed', endedAt: now } : { cursor: next })
-        .where(eq(practiceSessions.id, sessionId))
-        .run();
-      return done ? 'completed' : 'active';
+      if (!done) {
+        db.update(practiceSessions).set({ cursor: next }).where(eq(practiceSessions.id, sessionId)).run();
+        return 'active';
+      }
+      db.transaction((tx) => {
+        tx.update(practiceSessions)
+          .set({ cursor: next, status: 'completed', endedAt: now })
+          .where(eq(practiceSessions.id, sessionId))
+          .run();
+        const stats = gradedStats(tx, sessionId);
+        const decision = decideUnlock({
+          mode: session.mode,
+          gradedCount: stats.gradedCount,
+          overalls: stats.overalls,
+          minutesAlreadyToday: minutesToday(tx, now, timeZone, sessionId),
+        });
+        if (decision.kind !== 'grant') return;
+        tx.insert(unlockGrants)
+          .values({
+            id: newId(),
+            sessionId,
+            minutes: decision.minutes,
+            status: 'earned',
+            earnedAt: now,
+            activatedAt: null,
+            expiresAt: null,
+            expiresUnusedAt: nextRolloverMs(now, timeZone),
+            screenTimeApplied: false,
+          })
+          .run();
+      });
+      return 'completed';
     },
 
     abandon(sessionId: string, now: number) {
@@ -408,6 +439,53 @@ export function createSessionRepo(db: AtlasDatabase) {
         .run();
     },
   };
+}
+
+function unlockFor(
+  db: AtlasDatabase,
+  session: { id: string; mode: PracticeView['session']['mode']; status: string },
+  now: number,
+  timeZone: string,
+): PracticeView['unlock'] {
+  if (session.status !== 'completed') return { kind: 'not-earned' };
+  const grant = db.select().from(unlockGrants).where(eq(unlockGrants.sessionId, session.id)).get();
+  if (grant) return grant.status === 'forfeited' ? { kind: 'not-earned' } : { kind: 'grant', minutes: grant.minutes };
+  return decideUnlock({
+    mode: session.mode,
+    ...gradedStats(db, session.id),
+    minutesAlreadyToday: minutesToday(db, now, timeZone, session.id),
+  });
+}
+
+function gradedStats(db: AtlasDatabase, sessionId: string) {
+  const rows = db
+    .select({ status: practiceAttempts.status, overall: feedback.overall })
+    .from(practiceAttempts)
+    .leftJoin(feedback, eq(feedback.attemptId, practiceAttempts.id))
+    .where(eq(practiceAttempts.sessionId, sessionId))
+    .all();
+  const counting = rows.filter((row) => row.status === 'scored' || row.status === 'captured');
+  return {
+    gradedCount: counting.length,
+    overalls: counting.flatMap((row) => (typeof row.overall === 'number' ? [row.overall] : [])),
+  };
+}
+
+function minutesToday(db: AtlasDatabase, now: number, timeZone: string, exceptSessionId: string) {
+  const start = localDayStartMs(now, timeZone);
+  const end = nextRolloverMs(now, timeZone);
+  return db
+    .select()
+    .from(unlockGrants)
+    .all()
+    .filter(
+      (grant) =>
+        grant.sessionId !== exceptSessionId &&
+        grant.status !== 'forfeited' &&
+        grant.earnedAt >= start &&
+        grant.earnedAt < end,
+    )
+    .reduce((sum, grant) => sum + grant.minutes, 0);
 }
 
 function toCard(row: {

@@ -1,13 +1,16 @@
+import { useState } from 'react';
 import { Pressable, StyleSheet } from 'react-native';
 
 import { Text, View } from '@/components/Themed';
 import { languageLabel } from '@/content/sample-lesson';
-import { clearProfile, useLearner } from '@/state/learnerStore';
+import { setScreenTimeSimulation } from '@/services/screenTime/stub';
 import { DEV_SCRIPT_NAMES, setDevScript, useDevScript } from '@/state/devSpeechScript';
+import { clearProfile, useLearner } from '@/state/learnerStore';
 
 export default function SettingsScreen() {
   const { profile } = useLearner();
   const script = useDevScript();
+  const [screenTimeOn, setScreenTimeOn] = useState(false);
 
   return (
     <View style={styles.container}>
@@ -21,7 +24,7 @@ export default function SettingsScreen() {
       )}
       <Text style={styles.copy}>Atlas starts with English to Spanish. More languages are coming later.</Text>
       <Text style={styles.copy}>
-        Listening and speaking use a simulated microphone in this build. App lock is not in this build yet.
+        Listening and speaking use a simulated microphone in this build. Screen Time is not connected, so an unlock is a timer on this phone.
       </Text>
       {__DEV__ ? (
         <View style={styles.scripts}>
@@ -41,6 +44,20 @@ export default function SettingsScreen() {
             );
           })}
         </View>
+      ) : null}
+      {__DEV__ ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Simulate Screen Time"
+          accessibilityState={{ selected: screenTimeOn }}
+          onPress={() => {
+            const next = !screenTimeOn;
+            setScreenTimeOn(next);
+            setScreenTimeSimulation(next);
+          }}
+          style={[styles.button, screenTimeOn && styles.buttonSelected]}>
+          <Text style={styles.buttonText}>{screenTimeOn ? 'Screen Time simulation on' : 'Simulate Screen Time'}</Text>
+        </Pressable>
       ) : null}
       {profile ? (
         <Pressable

@@ -1,12 +1,13 @@
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useEffect } from 'react';
+import { useEffect, type ReactElement } from 'react';
 import { StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
 import { useAppBootstrap } from '@/state/bootstrap';
+import { useSettings } from '@/state/settingsStore';
 
 export {
   // Catch any errors thrown by the Layout component.
@@ -54,10 +55,21 @@ function StartupError({ message }: { message: string }) {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  const settings = useSettings();
+  const segments = useSegments();
+  const top = segments[0];
+  const inOnboarding = top === '(onboarding)';
+  const inPractice = top === 'practice';
+  let redirect: ReactElement | null = null;
+  if (settings.ready && !settings.onboardingCompleted && !inOnboarding && !inPractice) {
+    redirect = <Redirect href="/(onboarding)/welcome" />;
+  } else if (settings.ready && settings.onboardingCompleted && inOnboarding) {
+    redirect = <Redirect href="/(tabs)/learn" />;
+  }
 
-  // Route map: architecture §3. The onboarding gate is not wired up yet.
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      {redirect}
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />

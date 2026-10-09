@@ -17,11 +17,13 @@ describe('migrations', () => {
       '0000_init',
       '0001_kind_talisman',
       '0002_quick_ultimo',
+      '0003_large_kingpin',
     ]);
-    expect(Object.keys(migrations.migrations)).toEqual(['m0000', 'm0001', 'm0002']);
+    expect(Object.keys(migrations.migrations)).toEqual(['m0000', 'm0001', 'm0002', 'm0003']);
     expect(migrations.migrations.m0000).toContain('CREATE TABLE `knowledge_items`');
     expect(migrations.migrations.m0001).toContain('CREATE TABLE `practice_sessions`');
     expect(migrations.migrations.m0002).toContain('CREATE TABLE `review_queue`');
+    expect(migrations.migrations.m0003).toContain('CREATE TABLE `unlock_grants`');
   });
 
   it('create the learning-loop §3 tables the app uses today', async () => {
@@ -39,6 +41,8 @@ describe('migrations', () => {
       'review_queue',
       'review_queue_due_idx',
       'saved_words',
+      'unlock_grants',
+      'unlock_grants_session_id_unique',
     ]);
   });
 
@@ -54,6 +58,7 @@ describe('migrations', () => {
       'feedback',
       'review_queue',
       'review_logs',
+      'unlock_grants',
     ]) {
       const columns = db.all<{ name: string; notnull: number; pk: number }>(sql.raw(`PRAGMA table_info(${table})`));
       const keys = columns.filter((column) => column.pk > 0);
@@ -70,7 +75,7 @@ describe('migrations', () => {
       first.close();
       const second = await openTestDatabase(path);
       expect(schemaOf(second)).toEqual(before);
-      expect(second.all(sql`SELECT hash FROM __drizzle_migrations`)).toHaveLength(3);
+      expect(second.all(sql`SELECT hash FROM __drizzle_migrations`)).toHaveLength(4);
       second.close();
     } finally {
       removeDatabaseFile(path);

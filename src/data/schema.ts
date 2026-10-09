@@ -1,4 +1,4 @@
-// Drizzle tables for learning-loop §3. unlock_grants arrives with the unlock timer.
+// Drizzle tables for learning-loop §3.
 // Conventions (§3): UUID text ids, integer ms (UTC) timestamps, text enums with CHECK.
 // Text primary keys are declared NOT NULL explicitly: SQLite otherwise lets a
 // non-INTEGER primary key hold NULL. drizzle-kit 0.31 emits NOT NULL for primary keys
@@ -20,6 +20,7 @@ import {
   SAVED_WORD_STATUSES,
   SESSION_MODES,
   SESSION_STATUSES,
+  UNLOCK_STATUSES,
 } from '@/domain/types';
 
 function oneOf(column: AnySQLiteColumn, values: readonly string[]): SQL {
@@ -232,4 +233,24 @@ export const reviewLogs = sqliteTable(
     check('review_logs_rating_check', sql`${t.rating} BETWEEN 1 AND 4`),
     check('review_logs_fsrs_state_before_check', oneOf(t.fsrsStateBefore, FSRS_STATES)),
   ],
+);
+
+/** learning-loop §3.7. One grant per session. */
+export const unlockGrants = sqliteTable(
+  'unlock_grants',
+  {
+    id: text('id').primaryKey().notNull(),
+    sessionId: text('session_id')
+      .notNull()
+      .unique()
+      .references(() => practiceSessions.id),
+    minutes: integer('minutes').notNull(),
+    status: text('status', { enum: UNLOCK_STATUSES }).notNull(),
+    earnedAt: integer('earned_at').notNull(),
+    activatedAt: integer('activated_at'),
+    expiresAt: integer('expires_at'),
+    expiresUnusedAt: integer('expires_unused_at').notNull(),
+    screenTimeApplied: integer('screen_time_applied', { mode: 'boolean' }).notNull(),
+  },
+  (t) => [check('unlock_grants_status_check', oneOf(t.status, UNLOCK_STATUSES))],
 );

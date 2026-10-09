@@ -43,18 +43,26 @@ export function SessionSummary({ sessionId }: { sessionId: string }) {
           : `${view.masteredCount} ${view.masteredCount === 1 ? 'phrase is' : 'phrases are'} mastered.`}
       </Text>
       {abandoned ? <Text style={styles.copy}>This session was abandoned. The answers you gave stay saved.</Text> : null}
-      <Text style={styles.note}>No unlock was earned. Unlocks come later.</Text>
+      <Text style={styles.note}>{unlockCopy(view)}</Text>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Done"
-        onPress={() => router.replace('/(tabs)/learn')}
+        accessibilityLabel={view.session.mode === 'onboarding' ? 'Continue' : 'Done'}
+        onPress={() => router.replace(view.session.mode === 'onboarding' ? '/(onboarding)/habit' : '/(tabs)/learn')}
         style={styles.primary}>
         <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-          Done
+          {view.session.mode === 'onboarding' ? 'Continue' : 'Done'}
         </Text>
       </Pressable>
     </View>
   );
+}
+
+function unlockCopy(view: PracticeView): string {
+  if (view.session.status === 'abandoned' || view.unlock.kind === 'not-earned' || view.unlock.kind === 'not-enough') {
+    return 'No unlock was earned.';
+  }
+  if (view.unlock.kind === 'daily-limit') return 'Daily unlock limit reached.';
+  return `You earned ${view.unlock.minutes} minutes.`;
 }
 
 const styles = StyleSheet.create({

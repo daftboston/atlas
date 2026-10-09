@@ -5,7 +5,7 @@ import { textMatch } from '@/domain/scoring/textMatch';
 import type { InputMode, PromptType } from '@/domain/types';
 
 import type { AtlasDatabase } from '../client';
-import { feedback, knowledgeItems, practiceAttempts, practiceSessions, reviewLogs, reviewQueue } from '../schema';
+import { feedback, knowledgeItems, practiceAttempts, practiceSessions, reviewLogs, reviewQueue, unlockGrants } from '../schema';
 import { DEFAULT_COURSE } from '../seed/courses';
 import { loadSeed } from '../seed/loadSeed';
 import { openTestDatabase } from '../testDatabase';
@@ -305,7 +305,72 @@ describe('session repository', () => {
     answer(repo, started.id, step, view.speechLocale, { transcript: 'Hola' });
     expect(item(db, 'es-v0-001')?.status).not.toBe('mastered');
   });
+
+  it('earns 15 minutes when an onboarding session has 3 graded attempts', () => {
+    const repo = createSessionRepo(db);
+    const { id, status } = finishOnboarding(repo);
+    expect(status).toBe('completed');
+    expect(db.select().from(unlockGrants).all()).toMatchObject([{ sessionId: id, minutes: 15, status: 'earned' }]);
+    expect(repo.getPractice(id, NOW, ZONE)?.unlock).toEqual({ kind: 'grant', minutes: 15 });
+    expect(item(db, 'es-v0-001')?.status).toBe('learning');
+  });
+
+  it('does not earn an unlock once today already has 60 minutes', () => {
+    db.insert(practiceSessions)
+      .values({
+        id: 'earlier',
+        startedAt: NOW - 1000,
+        endedAt: NOW - 1,
+        mode: 'daily',
+        status: 'completed',
+        plannedItemIds: [],
+        cursor: 0,
+      })
+      .run();
+    db.insert(unlockGrants)
+      .values({
+        id: 'earlier-grant',
+        sessionId: 'earlier',
+        minutes: 60,
+        status: 'earned',
+        earnedAt: NOW - 1000,
+        activatedAt: null,
+        expiresAt: null,
+        expiresUnusedAt: NOW + 60_000,
+        screenTimeApplied: false,
+      })
+      .run();
+    const repo = createSessionRepo(db);
+    const { id } = finishOnboarding(repo);
+    expect(db.select().from(unlockGrants).all()).toHaveLength(1);
+    expect(repo.getPractice(id, NOW, ZONE)?.unlock).toEqual({ kind: 'daily-limit' });
+  });
+
+  it('rolls back session completion when the grant insert fails', () => {
+    const repo = createSessionRepo(db);
+    const started = repo.start('onboarding', NOW, ZONE);
+    if (started.kind !== 'started') throw new Error('expected a session');
+    const view = repo.getPractice(started.id, NOW, ZONE);
+    if (!view) throw new Error('expected a session');
+    for (const step of view.steps.slice(0, 3)) answer(repo, started.id, step, view.speechLocale, { transcript: step.targetText });
+    for (let i = 0; i < view.steps.length - 1; i += 1) repo.advance(started.id, NOW, ZONE);
+    db.run(sql`CREATE TRIGGER fail_grant BEFORE INSERT ON unlock_grants BEGIN SELECT RAISE(ABORT, 'fail'); END`);
+    expect(() => repo.advance(started.id, NOW, ZONE)).toThrow(/fail/);
+    expect(db.select().from(practiceSessions).all()[0]?.status).toBe('active');
+    expect(db.select().from(unlockGrants).all()).toEqual([]);
+  });
 });
+
+function finishOnboarding(repo: ReturnType<typeof createSessionRepo>) {
+  const started = repo.start('onboarding', NOW, ZONE);
+  if (started.kind !== 'started') throw new Error('expected a session');
+  const view = repo.getPractice(started.id, NOW, ZONE);
+  if (!view) throw new Error('expected a session');
+  for (const step of view.steps.slice(0, 3)) answer(repo, started.id, step, view.speechLocale, { transcript: step.targetText });
+  let status: 'active' | 'completed' = 'active';
+  for (let i = 0; i < view.steps.length; i += 1) status = repo.advance(started.id, NOW, ZONE);
+  return { id: started.id, status };
+}
 
 function answer(
   repo: ReturnType<typeof createSessionRepo>,

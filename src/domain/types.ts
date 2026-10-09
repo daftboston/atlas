@@ -72,6 +72,8 @@ export type AppSettings = {
   sessionSize: number;
   desiredRetention: number;
   screenTimeEnabled: boolean;
+  /** True when the learner chose to continue without the microphone. */
+  micDenied: boolean;
 };
 
 /** The active course, as the current Learn and Settings screens see it. */
@@ -102,6 +104,10 @@ export type SavedWord = {
 };
 
 export const SESSION_MODES = ['onboarding', 'daily', 'review-only'] as const;
+
+/** learning-loop §3.7. */
+export const UNLOCK_STATUSES = ['earned', 'active', 'expired', 'forfeited'] as const;
+export type UnlockStatus = (typeof UNLOCK_STATUSES)[number];
 export type SessionMode = (typeof SESSION_MODES)[number];
 
 export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;

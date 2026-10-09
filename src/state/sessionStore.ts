@@ -4,6 +4,7 @@ import type { PracticeView, RecordAttemptInput, SessionHome, SessionRepository, 
 import { deviceTimeZone } from '@/lib/time';
 
 import { refreshReview } from './reviewStore';
+import { refreshUnlock } from './unlockStore';
 
 export type SessionSnapshot = {
   ready: boolean;
@@ -63,6 +64,12 @@ export function startReviewSession(now = Date.now()): StartResult {
   return result;
 }
 
+export function startOnboardingSession(now = Date.now()): StartResult {
+  const result = repo().start('onboarding', now, deviceTimeZone());
+  refresh(now);
+  return result;
+}
+
 /** Read a session without publishing. Safe to call while drawing a screen. */
 export function readPractice(sessionId: string): PracticeView | null {
   if (!repository) return null;
@@ -85,8 +92,9 @@ export function saveAttempt(input: RecordAttemptInput) {
 }
 
 export function advanceSession(sessionId: string, now = Date.now()) {
-  const status = repo().advance(sessionId, now);
+  const status = repo().advance(sessionId, now, deviceTimeZone());
   refresh(now);
+  if (status === 'completed') void refreshUnlock(now);
   return status;
 }
 

@@ -72,6 +72,7 @@ function practiceRepo(): SessionRepository {
       attempts: [...attempts],
       feedback: [...feedback],
       masteredCount: 0,
+      unlock: { kind: 'not-earned' },
     }),
     recordAttempt(input: RecordAttemptInput) {
       const id = `attempt-${attempts.length + 1}`;
