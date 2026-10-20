@@ -15,7 +15,7 @@ import { bindAccent } from './accent';
 import { hydrateLearner } from './learnerStore';
 import { hydrateReview } from './reviewStore';
 import { hydrateSession } from './sessionStore';
-import { hydrateSettings } from './settingsStore';
+import { hydrateSettings, setKnownSpeechLocale } from './settingsStore';
 import { hydrateUnlock } from './unlockStore';
 
 export type BootstrapState = { ready: boolean; error: Error | null };
@@ -37,10 +37,12 @@ export function useAppBootstrap(): BootstrapState {
         loadSeed(db, DEFAULT_COURSE, Date.now());
         const settings = createSettingsRepo(db);
         const courses = createCourseRepo(db);
+        const courseId = settings.get('activeCourseId') ?? V0_COURSE.courseId;
         bindAccent((locale) => {
           courses.setSpeechLocale(settings.get('activeCourseId') ?? V0_COURSE.courseId, locale);
+          setKnownSpeechLocale(locale);
         });
-        hydrateSettings(settings);
+        hydrateSettings(settings, courses.get(courseId)?.speechLocale ?? null);
         await hydrateLearner(createLearnerRepository(db));
         hydrateReview(createReviewRepo(db));
         hydrateSession(createSessionRepo(db));

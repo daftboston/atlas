@@ -1,14 +1,16 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { Text, useThemeColor, View } from '@/components/Themed';
+import { PrimaryButton } from '@/components/ui/ios';
 import type { PracticeView } from '@/data/repositories/sessionRepo';
 import { RATING_HARD_BELOW } from '@/domain/config';
 import { openPractice, refreshSessionHome } from '@/state/sessionStore';
 
 export function SessionSummary({ sessionId }: { sessionId: string }) {
   const router = useRouter();
+  const secondary = useThemeColor({}, 'secondaryText');
   const [view] = useState<PracticeView | null>(() => openPractice(sessionId));
 
   useEffect(() => {
@@ -28,6 +30,7 @@ export function SessionSummary({ sessionId }: { sessionId: string }) {
 
   const matched = view.feedback.filter((row) => row.overall >= RATING_HARD_BELOW).length;
   const abandoned = view.session.status === 'abandoned';
+  const doneLabel = view.session.mode === 'onboarding' ? 'Continue' : 'Done';
 
   return (
     <View style={styles.screen}>
@@ -43,16 +46,11 @@ export function SessionSummary({ sessionId }: { sessionId: string }) {
           : `${view.masteredCount} ${view.masteredCount === 1 ? 'phrase is' : 'phrases are'} mastered.`}
       </Text>
       {abandoned ? <Text style={styles.copy}>This session was abandoned. The answers you gave stay saved.</Text> : null}
-      <Text style={styles.note}>{unlockCopy(view)}</Text>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={view.session.mode === 'onboarding' ? 'Continue' : 'Done'}
+      <Text style={[styles.note, { color: secondary }]}>{unlockCopy(view)}</Text>
+      <PrimaryButton
+        label={doneLabel}
         onPress={() => router.replace(view.session.mode === 'onboarding' ? '/(onboarding)/habit' : '/(tabs)/learn')}
-        style={styles.primary}>
-        <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-          {view.session.mode === 'onboarding' ? 'Continue' : 'Done'}
-        </Text>
-      </Pressable>
+      />
     </View>
   );
 }
@@ -80,18 +78,7 @@ const styles = StyleSheet.create({
     lineHeight: 26,
   },
   note: {
-    fontSize: 15,
-    lineHeight: 22,
-    opacity: 0.75,
-  },
-  primary: {
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  primaryText: {
     fontSize: 17,
-    fontWeight: '600',
+    lineHeight: 22,
   },
 });

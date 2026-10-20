@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
+import Colors from '@/constants/Colors';
 import { useAppBootstrap } from '@/state/bootstrap';
 import { useSettings } from '@/state/settingsStore';
 
@@ -67,10 +68,31 @@ function RootLayoutNav() {
     redirect = <Redirect href="/(tabs)/learn" />;
   }
 
+  const palette = Colors[colorScheme];
+  const base = colorScheme === 'dark' ? DarkTheme : DefaultTheme;
+  const theme = {
+    ...base,
+    colors: {
+      ...base.colors,
+      primary: palette.tint,
+      background: palette.background,
+      card: palette.background,
+      text: palette.text,
+      border: palette.separator,
+    },
+  };
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={theme}>
       {redirect}
-      <Stack>
+      <Stack
+        screenOptions={{
+          headerShadowVisible: false,
+          headerStyle: { backgroundColor: palette.background },
+          headerTitleStyle: { color: palette.text },
+          headerTintColor: palette.tint,
+          contentStyle: { backgroundColor: palette.background },
+        }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
         <Stack.Screen

@@ -19,7 +19,10 @@ function reviewRepo(): ReviewRepository {
       due: [{ itemId: 'due-1', targetText: 'Buenos días', meaning: 'Good morning', due: 1 }],
       upcoming: [{ itemId: 'soon-1', targetText: 'Gracias', meaning: 'Thank you', due: Date.now() + 2 * 24 * 60 * 60 * 1000 }],
       saved: [{ itemId: 'saved-1', targetText: 'Hola', meaning: 'Hello', due: null }],
+      suspended: [],
     }),
+    suspend() {},
+    unsuspend() {},
   };
 }
 

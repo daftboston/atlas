@@ -1,8 +1,9 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, TextInput } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { Text, useThemeColor, View } from '@/components/Themed';
+import { Field, PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/ios';
 import { feedbackFor, hintLine, type FeedbackState, type ListenOutcome } from '@/domain/scoring/feedback';
 import type { TextMatchResult } from '@/domain/scoring/types';
 import { createSpeechService } from '@/services/speech/registry';
@@ -28,6 +29,7 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   const typedRef = useRef('');
   const [confirmLeave, setConfirmLeave] = useState(false);
   const allowLeave = useRef(false);
+  const secondary = useThemeColor({}, 'secondaryText');
 
   const active = view?.session.status === 'active';
 
@@ -64,13 +66,7 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
         <Text style={styles.copy}>
           {view.session.status === 'abandoned' ? 'This session was abandoned.' : 'This session is finished.'}
         </Text>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back to Learn"
-          onPress={() => router.back()}
-          style={styles.secondary}>
-          <Text style={styles.secondaryText}>Back to Learn</Text>
-        </Pressable>
+        <SecondaryButton label="Back to Learn" onPress={() => router.back()} />
       </View>
     );
   }
@@ -214,83 +210,50 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-        <Text style={styles.kicker}>
+        <Text style={[styles.kicker, { color: secondary }]}>
           Step {view.session.cursor + 1} of {view.steps.length}
         </Text>
         <Text style={styles.meaning}>{step.meaning}</Text>
         {showTarget ? <Text style={styles.word}>{step.targetText}</Text> : null}
-        <Text style={styles.note}>
+        <Text style={[styles.note, { color: secondary }]}>
           {step.promptType === 'listen-repeat'
             ? 'Listen, then say it. The microphone is simulated.'
             : 'Say the phrase from the meaning. The microphone is simulated.'}
         </Text>
 
-        {step.promptType === 'listen-repeat' ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Hear it" disabled={busy} onPress={() => void hear()} style={styles.secondary}>
-            <Text style={styles.secondaryText}>Hear it</Text>
-          </Pressable>
-        ) : null}
-        {played ? <Text style={styles.note}>Played.</Text> : null}
+        {step.promptType === 'listen-repeat' ? <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} /> : null}
+        {played ? <Text style={[styles.note, { color: secondary }]}>Played.</Text> : null}
 
         {canAnswer ? (
           <>
-            <Pressable accessibilityRole="button" accessibilityLabel="Repeat" disabled={busy} onPress={() => void repeat()} style={styles.primary}>
-              <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-                Repeat
-              </Text>
-            </Pressable>
-            <TextInput
-              accessibilityLabel="Type the phrase"
+            <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} />
+            <Field
+              label="Type the phrase"
               value={typed}
               onChangeText={(value) => {
                 typedRef.current = value;
                 setTyped(value);
               }}
-              autoCapitalize="none"
-              autoCorrect={false}
               returnKeyType="done"
               onSubmitEditing={() => void checkTyped()}
-              style={styles.input}
-              placeholder="Type the phrase"
             />
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Check typing"
-              disabled={typed.trim().length === 0}
-              onPress={() => void checkTyped()}
-              style={styles.secondary}>
-              <Text style={styles.secondaryText}>Check typing</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="I don't know" disabled={busy} onPress={skip} style={styles.secondary}>
-              <Text style={styles.secondaryText}>I don&apos;t know</Text>
-            </Pressable>
+            <SecondaryButton label="Check typing" disabled={typed.trim().length === 0} onPress={() => void checkTyped()} />
+            <SecondaryButton label="I don't know" disabled={busy} onPress={skip} />
           </>
         ) : null}
 
         {feedback ? <FeedbackPanel state={feedback} hint={hint} /> : null}
         {skipped ? <Text style={styles.copy}>Skipped.</Text> : null}
-        {canAdvance ? (
-          <Pressable accessibilityRole="button" accessibilityLabel="Next" onPress={next} style={styles.primary}>
-            <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-              Next
-            </Text>
-          </Pressable>
-        ) : null}
+        {canAdvance ? <PrimaryButton label="Next" onPress={next} /> : null}
 
         {confirmLeave ? (
           <View style={styles.confirm}>
             <Text style={styles.copy}>Leave this session? It will be marked abandoned. Answers you already gave stay saved.</Text>
-            <Pressable accessibilityRole="button" accessibilityLabel="Stay" onPress={() => setConfirmLeave(false)} style={styles.secondary}>
-              <Text style={styles.secondaryText}>Stay</Text>
-            </Pressable>
-            <Pressable accessibilityRole="button" accessibilityLabel="Leave" onPress={leave} style={styles.secondary}>
-              <Text style={styles.secondaryText}>Leave</Text>
-            </Pressable>
+            <SecondaryButton label="Stay" onPress={() => setConfirmLeave(false)} />
+            <TextButton label="Leave" destructive onPress={leave} />
           </View>
         ) : (
-          <Pressable accessibilityRole="button" accessibilityLabel="Leave session" onPress={() => setConfirmLeave(true)} style={styles.secondary}>
-            <Text style={styles.secondaryText}>Leave session</Text>
-          </Pressable>
+          <TextButton label="Leave session" onPress={() => setConfirmLeave(true)} />
         )}
       </ScrollView>
     </View>
@@ -316,9 +279,8 @@ const styles = StyleSheet.create({
   kicker: {
     fontSize: 13,
     fontWeight: '600',
-    letterSpacing: 0.4,
+    letterSpacing: 0.6,
     textTransform: 'uppercase',
-    opacity: 0.6,
   },
   word: {
     fontSize: 40,
@@ -334,37 +296,7 @@ const styles = StyleSheet.create({
   },
   note: {
     fontSize: 15,
-    lineHeight: 22,
-    opacity: 0.75,
-  },
-  primary: {
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  primaryText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
-  secondary: {
-    borderWidth: 1,
-    borderColor: '#888',
-    borderRadius: 8,
-    alignItems: 'center',
-    paddingVertical: 12,
-  },
-  secondaryText: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#888',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    fontSize: 17,
+    lineHeight: 20,
   },
   confirm: {
     gap: 8,

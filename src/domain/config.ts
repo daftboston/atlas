@@ -17,7 +17,13 @@ export const LISTEN_MAX_DURATION_MS = 8000;
 export const LISTEN_SILENCE_TIMEOUT_MS = 1500;
 
 export const DAILY_NEW_LIMIT = 5;
+export const DAILY_NEW_LIMIT_MIN = 1;
+export const DAILY_NEW_LIMIT_MAX = 20;
 export const SESSION_SIZE = 8;
+export const SESSION_SIZE_MIN = 1;
+export const SESSION_SIZE_MAX = 20;
+/** learning-loop §3.8. Choices offered for `desiredRetention`. */
+export const RETENTION_CHOICES = [0.8, 0.85, 0.9, 0.95] as const;
 export const ONBOARDING_ITEM_COUNT = 3;
 export const SESSION_STALE_MS = 2 * 60 * 60 * 1000;
 

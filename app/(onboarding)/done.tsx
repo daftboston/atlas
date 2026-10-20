@@ -1,7 +1,6 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { OnboardingFrame, PrimaryButton } from '@/components/ui/ios';
 import { useReviewHome } from '@/state/reviewStore';
 import { completeOnboarding } from '@/state/settingsStore';
 
@@ -16,28 +15,14 @@ export default function DoneScreen() {
   }
 
   return (
-    <View style={styles.screen}>
-      <Text style={styles.title} accessibilityRole="header">
-        You&apos;re ready
-      </Text>
-      <Text style={styles.copy}>
-        {scheduled === 0
+    <OnboardingFrame
+      title="You're ready"
+      copy={
+        scheduled === 0
           ? 'Your next session will put the first reviews on the schedule.'
-          : `${scheduled} ${scheduled === 1 ? 'review is' : 'reviews are'} on the schedule.`}
-      </Text>
-      <Pressable accessibilityRole="button" accessibilityLabel="Go to Learn" onPress={finish} style={styles.primary}>
-        <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-          Go to Learn
-        </Text>
-      </Pressable>
-    </View>
+          : `${scheduled} ${scheduled === 1 ? 'review is' : 'reviews are'} on the schedule.`
+      }
+      footer={<PrimaryButton label="Go to Learn" onPress={finish} />}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  screen: { flex: 1, padding: 24, gap: 16, justifyContent: 'center' },
-  title: { fontSize: 32, fontWeight: '700' },
-  copy: { fontSize: 18, lineHeight: 26 },
-  primary: { backgroundColor: '#2f95dc', borderRadius: 8, alignItems: 'center', paddingVertical: 14 },
-  primaryText: { fontSize: 17, fontWeight: '600' },
-});

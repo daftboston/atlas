@@ -1,7 +1,8 @@
 import { useEffect } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { Text, useThemeColor, View } from '@/components/Themed';
+import { Group, PrimaryButton, ScreenTitle, SectionFooter, SectionHeader } from '@/components/ui/ios';
 import type { UnlockGrantRow } from '@/data/repositories/unlockRepo';
 import { activateGrant, refreshUnlock, useUnlock } from '@/state/unlockStore';
 
@@ -13,40 +14,27 @@ function remainingLabel(expiresAt: number, now: number): string {
 }
 
 function Grant({ grant, now }: { grant: UnlockGrantRow; now: number }) {
-  if (grant.status === 'active' && grant.expiresAt !== null) {
-    return (
-      <View style={styles.card}>
-        <Text style={styles.word}>{grant.minutes} minutes</Text>
-        <Text style={styles.meta}>{remainingLabel(grant.expiresAt, now)}</Text>
-      </View>
-    );
-  }
-  if (grant.status === 'earned') {
-    return (
-      <View style={styles.card}>
-        <Text style={styles.word}>{grant.minutes} minutes</Text>
-        <Text style={styles.meta}>Earned</Text>
-        <Pressable accessibilityRole="button" accessibilityLabel="Activate" onPress={() => void activateGrant(grant.id)} style={styles.primary}>
-          <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-            Activate
-          </Text>
-        </Pressable>
-      </View>
-    );
-  }
-  if (grant.status === 'expired') {
-    return (
-      <View style={styles.card}>
-        <Text style={styles.word}>{grant.minutes} minutes</Text>
-        <Text style={styles.meta}>Expired</Text>
-      </View>
-    );
-  }
-  return null;
+  const secondary = useThemeColor({}, 'secondaryText');
+  return (
+    <View style={styles.grant}>
+      <Text style={styles.minutes}>{grant.minutes} minutes</Text>
+      {grant.status === 'active' && grant.expiresAt !== null ? (
+        <Text style={[styles.meta, { color: secondary }]}>{remainingLabel(grant.expiresAt, now)}</Text>
+      ) : null}
+      {grant.status === 'earned' ? <Text style={[styles.meta, { color: secondary }]}>Earned</Text> : null}
+      {grant.status === 'expired' ? <Text style={[styles.meta, { color: secondary }]}>Expired</Text> : null}
+      {grant.status === 'earned' ? (
+        <View style={styles.activate}>
+          <PrimaryButton label="Activate" onPress={() => void activateGrant(grant.id)} />
+        </View>
+      ) : null}
+    </View>
+  );
 }
 
 export default function UnlockScreen() {
   const unlock = useUnlock();
+  const secondary = useThemeColor({}, 'secondaryText');
 
   useEffect(() => {
     void refreshUnlock();
@@ -61,24 +49,37 @@ export default function UnlockScreen() {
       : 'Screen Time is unavailable. This timer still runs.';
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Unlock</Text>
-      <Text style={styles.copy}>{status}</Text>
-      {visible.length === 0 ? <Text style={styles.copy}>No unlocks yet. Finish a practice session to earn one.</Text> : null}
-      {visible.map((grant) => (
-        <Grant key={grant.id} grant={grant} now={unlock.now} />
-      ))}
-    </View>
+    <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+      <ScreenTitle>Unlock</ScreenTitle>
+      <SectionHeader>Today</SectionHeader>
+      <Group>
+        <View style={styles.status}>
+          <Text style={styles.copy}>{status}</Text>
+        </View>
+      </Group>
+      <SectionFooter>
+        A finished session earns free minutes. Activate starts the countdown. Blocking other apps comes later, on a physical iPhone.
+      </SectionFooter>
+      {visible.length === 0 ? (
+        <Text style={[styles.copy, styles.empty, { color: secondary }]}>No unlocks yet. Finish a practice session to earn one.</Text>
+      ) : (
+        <Group>
+          {visible.map((grant) => (
+            <Grant key={grant.id} grant={grant} now={unlock.now} />
+          ))}
+        </Group>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 24, gap: 12 },
-  title: { fontSize: 28, fontWeight: '700' },
-  copy: { fontSize: 16, lineHeight: 22 },
-  card: { gap: 6, paddingVertical: 8 },
-  word: { fontSize: 22, fontWeight: '600' },
-  meta: { fontSize: 15, opacity: 0.75 },
-  primary: { backgroundColor: '#2f95dc', borderRadius: 8, alignItems: 'center', paddingVertical: 12, marginTop: 4 },
-  primaryText: { fontSize: 17, fontWeight: '600' },
+  content: { padding: 16, gap: 8, paddingBottom: 40 },
+  status: { paddingHorizontal: 16, paddingVertical: 12 },
+  copy: { fontSize: 17, lineHeight: 22 },
+  empty: { marginTop: 16 },
+  grant: { paddingHorizontal: 16, paddingVertical: 14, gap: 4 },
+  minutes: { fontSize: 22, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  meta: { fontSize: 15, fontVariant: ['tabular-nums'] },
+  activate: { marginTop: 8 },
 });

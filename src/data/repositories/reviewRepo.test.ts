@@ -78,4 +78,23 @@ describe('review repository', () => {
     db.update(knowledgeItems).set({ status: 'mastered', masteredAt: NOW }).where(eq(knowledgeItems.id, hola.id)).run();
     expect(repo.home(NOW).masteredCount).toBe(1);
   });
+
+  it('pauses a phrase and restores the status it had', () => {
+    const hola = db.select().from(knowledgeItems).where(eq(knowledgeItems.seedId, 'es-v0-001')).get();
+    if (!hola) throw new Error('missing Hola');
+    db.update(knowledgeItems).set({ status: 'mastered', masteredAt: NOW }).where(eq(knowledgeItems.id, hola.id)).run();
+    const repo = createReviewRepo(db);
+
+    repo.suspend(hola.id, NOW);
+    const paused = db.select().from(knowledgeItems).where(eq(knowledgeItems.id, hola.id)).get();
+    expect(paused).toMatchObject({ status: 'suspended', statusBeforeSuspend: 'mastered' });
+    expect(repo.home(NOW).suspended.map((entry) => entry.targetText)).toEqual(['Hola']);
+    expect(repo.home(NOW).masteredCount).toBe(0);
+
+    repo.unsuspend(hola.id, NOW + 1);
+    const restored = db.select().from(knowledgeItems).where(eq(knowledgeItems.id, hola.id)).get();
+    expect(restored).toMatchObject({ status: 'mastered', statusBeforeSuspend: null });
+    expect(repo.home(NOW).suspended).toEqual([]);
+    expect(repo.home(NOW).masteredCount).toBe(1);
+  });
 });

@@ -1,12 +1,14 @@
 import { useRouter } from 'expo-router';
-import { Pressable, StyleSheet } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { Text, useThemeColor, View } from '@/components/Themed';
+import { Group, PrimaryButton, SectionFooter, SectionHeader } from '@/components/ui/ios';
 import { startDailySession, useSessionHome } from '@/state/sessionStore';
+import { StyleSheet } from 'react-native';
 
 export function SessionHome() {
   const { ready, home } = useSessionHome();
   const router = useRouter();
+  const secondary = useThemeColor({}, 'secondaryText');
   if (!ready) return null;
 
   function open(sessionId: string) {
@@ -14,69 +16,52 @@ export function SessionHome() {
   }
 
   return (
-    <View style={styles.bar}>
+    <View style={styles.block}>
+      <SectionHeader>Today</SectionHeader>
       {home.activeSessionId ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Resume"
+        <PrimaryButton
+          label="Resume"
           onPress={() => {
             if (home.activeSessionId) open(home.activeSessionId);
           }}
-          style={styles.primary}>
-          <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-            Resume
-          </Text>
-        </Pressable>
+        />
       ) : home.caughtUp ? (
-        <Text style={styles.copy}>All caught up</Text>
+        <Group>
+          <View style={styles.card}>
+            <Text style={[styles.copy, { color: secondary }]}>All caught up</Text>
+          </View>
+        </Group>
       ) : (
         <>
-          {home.dueCount > 0 ? (
-            <Text style={styles.copy}>
-              {home.dueCount} due
-            </Text>
-          ) : null}
-          {home.newRemaining > 0 ? (
-            <Text style={styles.copy}>
-              {home.newRemaining} new {home.newRemaining === 1 ? 'phrase' : 'phrases'} left today
-            </Text>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Start session"
-            onPress={() => {
-              const result = startDailySession();
-              if (result.kind !== 'caught-up') open(result.id);
-            }}
-            style={styles.primary}>
-            <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-              Start session
-            </Text>
-          </Pressable>
+          <Group>
+            <View style={styles.card}>
+              {home.dueCount > 0 ? <Text style={styles.copy}>{home.dueCount} due</Text> : null}
+              {home.newRemaining > 0 ? (
+                <Text style={styles.copy}>
+                  {home.newRemaining} new {home.newRemaining === 1 ? 'phrase' : 'phrases'} left today
+                </Text>
+              ) : null}
+            </View>
+          </Group>
+          <View style={styles.action}>
+            <PrimaryButton
+              label="Start session"
+              onPress={() => {
+                const result = startDailySession();
+                if (result.kind !== 'caught-up') open(result.id);
+              }}
+            />
+          </View>
         </>
       )}
+      <SectionFooter>Hear a phrase, say it back, or type it. The microphone on this Mac is simulated.</SectionFooter>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  bar: {
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    gap: 8,
-  },
-  copy: {
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  primary: {
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  primaryText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
+  block: { gap: 0 },
+  card: { paddingHorizontal: 16, paddingVertical: 12, gap: 4 },
+  copy: { fontSize: 17, lineHeight: 22 },
+  action: { marginTop: 12 },
 });

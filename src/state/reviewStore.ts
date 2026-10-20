@@ -8,7 +8,7 @@ export type ReviewSnapshot = {
   home: ReviewHome;
 };
 
-const EMPTY_HOME: ReviewHome = { masteredCount: 0, due: [], upcoming: [], saved: [] };
+const EMPTY_HOME: ReviewHome = { masteredCount: 0, due: [], upcoming: [], saved: [], suspended: [] };
 
 let repository: ReviewRepository | null = null;
 let snapshot: ReviewSnapshot = { ready: false, now: 0, home: EMPTY_HOME };
@@ -37,6 +37,16 @@ export function resetReview() {
 export function refreshReview(now = Date.now()) {
   if (!repository) return;
   publish({ ready: true, now, home: repository.home(now) });
+}
+
+export function suspendPhrase(itemId: string, now = Date.now()) {
+  repository?.suspend(itemId, now);
+  refreshReview(now);
+}
+
+export function unsuspendPhrase(itemId: string, now = Date.now()) {
+  repository?.unsuspend(itemId, now);
+  refreshReview(now);
 }
 
 export function useReviewHome(): ReviewSnapshot {

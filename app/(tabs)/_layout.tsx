@@ -1,19 +1,23 @@
 import { SymbolView } from 'expo-symbols';
 import { Tabs } from 'expo-router';
 
-import Colors from '@/constants/Colors';
 import { useColorScheme } from '@/components/useColorScheme';
-import { useClientOnlyValue } from '@/components/useClientOnlyValue';
+import Colors from '@/constants/Colors';
 
 // Tab bar from architecture §3: Learn, Review, Unlock, Settings.
 export default function TabLayout() {
   const colorScheme = useColorScheme();
 
+  const palette = Colors[colorScheme];
+
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: Colors[colorScheme].tint,
-        headerShown: useClientOnlyValue(false, true),
+        tabBarActiveTintColor: palette.tint,
+        tabBarInactiveTintColor: palette.tabIconDefault,
+        // The screen draws its own large title. A second bar would repeat it.
+        headerShown: false,
+        tabBarStyle: { backgroundColor: palette.background },
       }}>
       <Tabs.Screen
         name="learn"

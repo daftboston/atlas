@@ -1,11 +1,12 @@
 import { useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { Pressable, StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { Text, useThemeColor, View } from '@/components/Themed';
+import { Group, PrimaryButton, ScreenTitle, SectionHeader, TextButton } from '@/components/ui/ios';
 import type { ReviewEntry } from '@/data/repositories/reviewRepo';
 import { useLearner } from '@/state/learnerStore';
-import { refreshReview, useReviewHome } from '@/state/reviewStore';
+import { refreshReview, suspendPhrase, unsuspendPhrase, useReviewHome } from '@/state/reviewStore';
 import { startReviewSession, useSessionHome } from '@/state/sessionStore';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -16,13 +17,21 @@ function upcomingLabel(due: number, now: number): string {
   return days === 1 ? 'In 1 day' : `In ${days} days`;
 }
 
-function Entry({ entry, detail }: { entry: ReviewEntry; detail: string }) {
+function Entry({ entry, detail, action }: { entry: ReviewEntry; detail: string; action: 'suspend' | 'unsuspend' }) {
+  const secondary = useThemeColor({}, 'secondaryText');
   return (
-    <View style={styles.row}>
-      <Text style={styles.word}>{entry.targetText}</Text>
-      <Text style={styles.meta}>
-        {entry.meaning} · {detail}
-      </Text>
+    <View style={styles.entryRow}>
+      <View style={styles.entryText}>
+        <Text style={styles.word}>{entry.targetText}</Text>
+        <Text style={[styles.meta, { color: secondary }]}>
+          {entry.meaning} · {detail}
+        </Text>
+      </View>
+      <TextButton
+        label={action === 'suspend' ? `Suspend ${entry.targetText}` : `Resume ${entry.targetText}`}
+        title={action === 'suspend' ? 'Pause' : 'Resume'}
+        onPress={() => (action === 'suspend' ? suspendPhrase(entry.itemId) : unsuspendPhrase(entry.itemId))}
+      />
     </View>
   );
 }
@@ -33,6 +42,7 @@ export default function ReviewScreen() {
   const session = useSessionHome();
   const router = useRouter();
   const now = review.now;
+  const secondary = useThemeColor({}, 'secondaryText');
 
   useEffect(() => {
     refreshReview();
@@ -40,36 +50,39 @@ export default function ReviewScreen() {
 
   if (!profile) {
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Review</Text>
-        <Text style={styles.copy}>Start your course on the Learn tab first.</Text>
-      </View>
+      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+        <ScreenTitle>Review</ScreenTitle>
+        <Text style={[styles.copy, { color: secondary }]}>Start your course on the Learn tab first.</Text>
+      </ScrollView>
     );
   }
 
   if (!review.ready) {
     const saved = words.filter((word) => word.language === profile.targetLanguage);
     return (
-      <View style={styles.container}>
-        <Text style={styles.title}>Review</Text>
+      <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+        <ScreenTitle>Review</ScreenTitle>
         {saved.length === 0 ? (
-          <Text style={styles.copy}>No words yet. Finish the sample lesson to save one.</Text>
+          <Text style={[styles.copy, { color: secondary }]}>No words yet. Finish the sample lesson to save one.</Text>
         ) : (
-          saved.map((word) => (
-            <View key={word.id} style={styles.row}>
-              <Text style={styles.word}>{word.text}</Text>
-              <Text style={styles.meta}>
-                {word.meaning} · {word.status === 'ready-to-review' ? 'Ready to review' : word.status}
-              </Text>
-            </View>
-          ))
+          <Group>
+            {saved.map((word) => (
+              <View key={word.id} style={styles.entry}>
+                <Text style={styles.word}>{word.text}</Text>
+                <Text style={[styles.meta, { color: secondary }]}>
+                  {word.meaning} · {word.status === 'ready-to-review' ? 'Ready to review' : word.status}
+                </Text>
+              </View>
+            ))}
+          </Group>
         )}
-      </View>
+      </ScrollView>
     );
   }
 
   const { due, upcoming, saved, masteredCount } = review.home;
-  const empty = due.length === 0 && upcoming.length === 0 && saved.length === 0;
+  const suspended = review.home.suspended ?? [];
+  const empty = due.length === 0 && upcoming.length === 0 && saved.length === 0 && suspended.length === 0;
 
   function reviewOnly() {
     const result = startReviewSession();
@@ -78,87 +91,68 @@ export default function ReviewScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Review</Text>
-      <Text style={styles.copy}>Mastered {masteredCount}</Text>
+    <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
+      <ScreenTitle>Review</ScreenTitle>
+      <Text style={styles.mastered}>Mastered {masteredCount}</Text>
       {due.length > 0 ? (
-        <>
-          <Text style={styles.section}>Due now</Text>
-          {due.map((entry) => (
-            <Entry key={entry.itemId} entry={entry} detail="Due" />
-          ))}
+        <View style={styles.block}>
+          <SectionHeader>Due now</SectionHeader>
+          <Group>
+            {due.map((entry) => (
+              <Entry key={entry.itemId} entry={entry} detail="Due" action="suspend" />
+            ))}
+          </Group>
           {session.ready && session.home.activeSessionId === null ? (
-            <Pressable accessibilityRole="button" accessibilityLabel="Review only" onPress={reviewOnly} style={styles.primary}>
-              <Text style={styles.primaryText} lightColor="#fff" darkColor="#000">
-                Review only
-              </Text>
-            </Pressable>
+            <View style={styles.action}>
+              <PrimaryButton label="Review only" onPress={reviewOnly} />
+            </View>
           ) : null}
-        </>
+        </View>
       ) : null}
       {upcoming.length > 0 ? (
-        <>
-          <Text style={styles.section}>Next 7 days</Text>
-          {upcoming.map((entry) => (
-            <Entry key={entry.itemId} entry={entry} detail={entry.due === null ? 'Scheduled' : upcomingLabel(entry.due, now)} />
-          ))}
-        </>
+        <View style={styles.block}>
+          <SectionHeader>Next 7 days</SectionHeader>
+          <Group>
+            {upcoming.map((entry) => (
+              <Entry key={entry.itemId} entry={entry} detail={entry.due === null ? 'Scheduled' : upcomingLabel(entry.due, now)} action="suspend" />
+            ))}
+          </Group>
+        </View>
       ) : null}
       {saved.length > 0 ? (
-        <>
-          <Text style={styles.section}>Saved</Text>
-          {saved.map((entry) => (
-            <Entry key={entry.itemId} entry={entry} detail="Ready to review" />
-          ))}
-        </>
+        <View style={styles.block}>
+          <SectionHeader>Saved</SectionHeader>
+          <Group>
+            {saved.map((entry) => (
+              <Entry key={entry.itemId} entry={entry} detail="Ready to review" action="suspend" />
+            ))}
+          </Group>
+        </View>
       ) : null}
-      {empty ? <Text style={styles.copy}>No words yet. Finish the sample lesson to save one.</Text> : null}
-    </View>
+      {suspended.length > 0 ? (
+        <View style={styles.block}>
+          <SectionHeader>Paused</SectionHeader>
+          <Group>
+            {suspended.map((entry) => (
+              <Entry key={entry.itemId} entry={entry} detail="Paused" action="unsuspend" />
+            ))}
+          </Group>
+        </View>
+      ) : null}
+      {empty ? <Text style={[styles.copy, { color: secondary }]}>No words yet. Finish the sample lesson to save one.</Text> : null}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    gap: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  section: {
-    marginTop: 8,
-    fontSize: 13,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    textTransform: 'uppercase',
-    opacity: 0.6,
-  },
-  copy: {
-    fontSize: 16,
-    lineHeight: 22,
-  },
-  row: {
-    gap: 4,
-    paddingVertical: 8,
-  },
-  word: {
-    fontSize: 22,
-    fontWeight: '600',
-  },
-  meta: {
-    fontSize: 15,
-    opacity: 0.75,
-  },
-  primary: {
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  primaryText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
+  content: { padding: 16, gap: 22, paddingBottom: 40 },
+  block: { gap: 0 },
+  action: { marginTop: 12 },
+  mastered: { fontSize: 22, fontWeight: '700' },
+  copy: { fontSize: 17, lineHeight: 22 },
+  entry: { paddingHorizontal: 16, paddingVertical: 12 },
+  entryRow: { minHeight: 58, paddingLeft: 16, paddingRight: 4, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  entryText: { flex: 1, paddingVertical: 10 },
+  word: { fontSize: 17, fontWeight: '600' },
+  meta: { fontSize: 15, lineHeight: 20, marginTop: 2 },
 });

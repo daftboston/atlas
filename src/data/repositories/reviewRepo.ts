@@ -4,6 +4,7 @@ import { REVIEW_HORIZON_MS } from '@/domain/config';
 
 import type { AtlasDatabase } from '../client';
 import { knowledgeItems, reviewQueue, savedWords } from '../schema';
+import { createKnowledgeRepo } from './knowledgeRepo';
 
 export type ReviewEntry = {
   itemId: string;
@@ -18,6 +19,7 @@ export type ReviewHome = {
   upcoming: ReviewEntry[];
   /** Saved words that do not have a card yet. The queue replaces them once a card exists. */
   saved: ReviewEntry[];
+  suspended: ReviewEntry[];
 };
 
 const openStatus = sql`${knowledgeItems.status} NOT IN ('new', 'suspended')`;
@@ -25,6 +27,8 @@ const openStatus = sql`${knowledgeItems.status} NOT IN ('new', 'suspended')`;
 export type ReviewRepository = ReturnType<typeof createReviewRepo>;
 
 export function createReviewRepo(db: AtlasDatabase) {
+  const knowledge = createKnowledgeRepo(db);
+
   function cards(where: ReturnType<typeof and> | ReturnType<typeof sql>) {
     return db
       .select({
@@ -59,13 +63,30 @@ export function createReviewRepo(db: AtlasDatabase) {
         .where(isNull(reviewQueue.itemId))
         .all()
         .map((row) => ({ ...row, due: null }));
+      const suspended = db
+        .select({
+          itemId: knowledgeItems.id,
+          targetText: knowledgeItems.targetText,
+          meaning: knowledgeItems.meaning,
+        })
+        .from(knowledgeItems)
+        .where(eq(knowledgeItems.status, 'suspended'))
+        .all()
+        .map((row) => ({ ...row, due: null }));
 
       return {
         masteredCount: Number(mastered?.n ?? 0),
         due: cards(and(lte(reviewQueue.due, now), openStatus)),
         upcoming: cards(and(gt(reviewQueue.due, now), lte(reviewQueue.due, now + REVIEW_HORIZON_MS), openStatus)),
         saved,
+        suspended,
       };
+    },
+    suspend(id: string, now: number) {
+      knowledge.suspend(id, now);
+    },
+    unsuspend(id: string, now: number) {
+      knowledge.unsuspend(id, now);
     },
   };
 }
