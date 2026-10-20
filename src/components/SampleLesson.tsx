@@ -119,9 +119,9 @@ function isMockSpeech(service: SpeechService): service is MockSpeechService {
 }
 
 const styles = StyleSheet.create({
-  block: { gap: 12 },
-  word: { fontSize: 40, fontWeight: '700' },
-  meaning: { fontSize: 22, fontWeight: '600' },
+  block: { gap: 8 },
+  word: { fontSize: 34, fontWeight: '700' },
+  meaning: { fontSize: 20, fontWeight: '600' },
   example: { fontSize: 17, lineHeight: 22 },
   note: { fontSize: 15, lineHeight: 20 },
 });

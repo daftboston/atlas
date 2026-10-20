@@ -30,7 +30,7 @@ export default function LearnScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, gap: 22, paddingBottom: 40 },
+  content: { padding: 16, gap: 22, paddingBottom: 48 },
   banner: { paddingHorizontal: 16, paddingTop: 12 },
   copy: { fontSize: 17, lineHeight: 22 },
 });
