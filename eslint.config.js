@@ -28,4 +28,24 @@ module.exports = defineConfig([
       ],
     },
   },
+  {
+    // Architecture §8. Profiles, the seed config, and tests may name a language.
+    files: ["src/**/*.{ts,tsx}", "app/**/*.{ts,tsx}"],
+    ignores: [
+      "src/domain/language/profiles/**",
+      "src/data/seed/**",
+      "src/content/sample-lesson.ts",
+      "**/*.test.ts",
+      "**/*.test.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": [
+        "error",
+        {
+          selector: "Literal[value='es'], Literal[value='es-MX'], Literal[value='es-ES']",
+          message: "Language tags belong in a language profile, content/, or the default course seed.",
+        },
+      ],
+    },
+  },
 ]);

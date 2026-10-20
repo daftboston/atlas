@@ -1,7 +1,7 @@
 // Shared domain types. They mirror the learning-loop §3 entities that exist so far.
 // Pure TypeScript: no React, React Native, Expo, Drizzle or services imports.
 
-/** BCP-47 language tag, e.g. `en`, `es`. Nothing in the domain is keyed on a specific language. */
+/** BCP-47 language tag. Nothing in the domain is keyed on a specific language. */
 export type LanguageCode = string;
 
 /** learning-loop §3.0 */
