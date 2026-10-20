@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 
-import { Text, View } from '@/components/Themed';
+import { Text, useThemeColor, View } from '@/components/Themed';
+import { Group, PrimaryButton, SectionFooter } from '@/components/ui/ios';
 import { COURSES, languageLabel } from '@/content/sample-lesson';
 import { startCourse } from '@/state/learnerStore';
 
@@ -10,67 +11,32 @@ export function LanguageSetup() {
   const nativeLabel = languageLabel(course.nativeLanguage);
   const targetLabel = languageLabel(course.targetLanguage);
   const summary = `You speak ${nativeLabel}, you're learning ${targetLabel}`;
+  const secondary = useThemeColor({}, 'secondaryText');
 
   return (
     <View style={styles.container}>
       <Text style={styles.title} accessibilityRole="header">
         Your course
       </Text>
-      <View style={styles.course} accessible accessibilityLabel={`Course: ${summary}`}>
-        <Text style={styles.courseText}>{summary}</Text>
-      </View>
-      <Text style={styles.copy}>More languages are coming later. This first lesson is a sample.</Text>
-
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel="Continue"
-        accessibilityHint={`Starts the ${nativeLabel} to ${targetLabel} course`}
-        style={styles.continue}
-        onPress={() => startCourse(course.courseId)}>
-        <Text style={styles.continueText} lightColor="#fff" darkColor="#000">
-          Continue
-        </Text>
-      </Pressable>
+      <Group>
+        <View style={styles.course} accessible accessibilityLabel={`Course: ${summary}`}>
+          <Text style={styles.courseText}>{summary}</Text>
+        </View>
+      </Group>
+      <Text style={[styles.copy, { color: secondary }]}>More languages are coming later. This first lesson is a sample.</Text>
+      <PrimaryButton
+        label="Continue"
+        onPress={() => startCourse(course.courseId)}
+      />
+      <SectionFooter>{`Starts the ${nativeLabel} to ${targetLabel} course`}</SectionFooter>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    gap: 12,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '700',
-  },
-  course: {
-    borderWidth: 1,
-    borderColor: '#2f95dc',
-    backgroundColor: 'rgba(47, 149, 220, 0.15)',
-    borderRadius: 8,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-  },
-  courseText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  copy: {
-    fontSize: 16,
-    lineHeight: 22,
-    opacity: 0.8,
-  },
-  continue: {
-    marginTop: 20,
-    backgroundColor: '#2f95dc',
-    borderRadius: 8,
-    alignItems: 'center',
-    paddingVertical: 14,
-  },
-  continueText: {
-    fontSize: 17,
-    fontWeight: '600',
-  },
+  container: { flex: 1, padding: 20, gap: 16, paddingTop: 24 },
+  title: { fontSize: 22, fontWeight: '700' },
+  course: { paddingHorizontal: 16, paddingVertical: 14 },
+  courseText: { fontSize: 17, fontWeight: '600', lineHeight: 22 },
+  copy: { fontSize: 17, lineHeight: 22 },
 });

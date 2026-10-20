@@ -40,6 +40,9 @@ export function Text(props: TextProps) {
 export function View(props: ViewProps) {
   const { style, lightColor, darkColor, ...otherProps } = props;
   const backgroundColor = useThemeColor({ light: lightColor, dark: darkColor }, 'background');
+  // A plain View stays transparent so grouped cards can show the screen behind them.
+  // Pass lightColor or darkColor when this view should paint its own background.
+  const painted = lightColor || darkColor ? { backgroundColor } : undefined;
 
-  return <DefaultView style={[{ backgroundColor }, style]} {...otherProps} />;
+  return <DefaultView style={[painted, style]} {...otherProps} />;
 }

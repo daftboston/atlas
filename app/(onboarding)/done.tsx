@@ -1,11 +1,28 @@
-import { Placeholder } from '@/components/Placeholder';
+import { useRouter } from 'expo-router';
+
+import { OnboardingFrame, PrimaryButton } from '@/components/ui/ios';
+import { useReviewHome } from '@/state/reviewStore';
+import { completeOnboarding } from '@/state/settingsStore';
 
 export default function DoneScreen() {
+  const router = useRouter();
+  const review = useReviewHome();
+  const scheduled = review.ready ? review.home.due.length + review.home.upcoming.length : 0;
+
+  function finish() {
+    completeOnboarding();
+    router.replace('/(tabs)/learn');
+  }
+
   return (
-    <Placeholder
-      title="All set"
-      purpose="A summary of the reviews scheduled for tomorrow."
-      next={{ href: '/(tabs)/learn', label: 'Go to Learn' }}
+    <OnboardingFrame
+      title="You're ready"
+      copy={
+        scheduled === 0
+          ? 'Your next session will put the first reviews on the schedule.'
+          : `${scheduled} ${scheduled === 1 ? 'review is' : 'reviews are'} on the schedule.`
+      }
+      footer={<PrimaryButton label="Go to Learn" onPress={finish} />}
     />
   );
 }

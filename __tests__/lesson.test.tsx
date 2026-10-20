@@ -4,6 +4,7 @@ import LearnScreen from '../app/(tabs)/learn';
 import ReviewScreen from '../app/(tabs)/review';
 import { sampleWord } from '@/content/sample-lesson';
 import { getLearnerSnapshot, hydrateLearner } from '@/state/learnerStore';
+import { resetDevScript, setDevScript } from '@/state/devSpeechScript';
 
 import { createMemoryLearnerRepository } from './support/memoryLearnerRepo';
 
@@ -11,6 +12,7 @@ describe('Sample lesson', () => {
   let repo: ReturnType<typeof createMemoryLearnerRepository>;
 
   beforeEach(async () => {
+    resetDevScript();
     repo = createMemoryLearnerRepository();
     await hydrateLearner(repo);
   });
@@ -59,6 +61,38 @@ describe('Sample lesson', () => {
     await render(<ReviewScreen />);
     expect(screen.getByText('Hola')).toBeOnTheScreen();
     expect(screen.getByText('Hello · Ready to review')).toBeOnTheScreen();
+  });
+
+  it('hears, repeats a simulated match, and checks a typed answer', async () => {
+    await render(<LearnScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Hear it' }));
+    expect(await screen.findByText('Played.')).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole('button', { name: 'Repeat' }));
+    expect(await screen.findByText('That matches.')).toBeOnTheScreen();
+    expect(screen.getByLabelText('correct, hola')).toBeOnTheScreen();
+    expect(screen.queryByText(/Hint:/)).toBeNull();
+
+    setDevScript('silence');
+    await fireEvent.press(screen.getByRole('button', { name: 'Try again' }));
+    expect(await screen.findByText("I didn't hear anything.")).toBeOnTheScreen();
+    expect(screen.queryByText('That matches.')).toBeNull();
+    expect(screen.queryByText(/Not quite/)).toBeNull();
+
+    await fireEvent.changeText(screen.getByLabelText('Type the phrase'), 'Hola');
+    await fireEvent.press(screen.getByRole('button', { name: 'Check typing' }));
+    expect(await screen.findByText('That matches.')).toBeOnTheScreen();
+  });
+
+  it('shows a close hint for the simulated close answer', async () => {
+    setDevScript('close');
+    await render(<LearnScreen />);
+    await fireEvent.press(screen.getByRole('button', { name: 'Continue' }));
+    await fireEvent.press(screen.getByRole('button', { name: 'Repeat' }));
+    expect(await screen.findByText('Not quite. Try again.')).toBeOnTheScreen();
+    expect(screen.getByText(/Close: hola/)).toBeOnTheScreen();
   });
 
   it('shows words saved in an earlier run once the store loads them', async () => {

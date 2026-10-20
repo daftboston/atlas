@@ -30,3 +30,14 @@ export function feedbackFor(outcome: ListenOutcome, score: TextMatchResult | nul
   if (score.overall >= RATING_HARD_BELOW) return { kind: 'pass', score };
   return { kind: 'try-again', score };
 }
+
+/** One hint: the first missing word, otherwise the first close word, otherwise the item notes. */
+export function hintLine(score: TextMatchResult, notes: string | null): string | null {
+  const missing = score.words.find((word) => word.status === 'missing' && word.expected);
+  if (missing?.expected) return `Missing: ${missing.expected}`;
+  const close = score.words.find((word) => word.status === 'close' && word.expected);
+  if (close?.expected) return `Close: ${close.expected}`;
+  if (score.accentHints[0]) return `Accent: ${score.accentHints[0]}`;
+  const trimmed = notes?.trim();
+  return trimmed ? trimmed : null;
+}

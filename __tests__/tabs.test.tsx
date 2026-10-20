@@ -38,7 +38,7 @@ describe('Tabs (architecture §3)', () => {
   it.each([
     ['Learn', '/learn', "You speak English, you're learning Spanish"],
     ['Review', '/review', 'Start your course on the Learn tab first.'],
-    ['Unlock', '/unlock', 'Not built yet. This screen is a placeholder.'],
+    ['Unlock', '/unlock', 'No unlocks yet. Finish a practice session to earn one.'],
     ['Settings', '/settings', 'Course not started yet.'],
   ])('renders the %s tab', async (_title, pathname, content) => {
     const app = await openApp(pathname);

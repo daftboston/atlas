@@ -25,6 +25,9 @@ export const V0_COURSE: Course = {
 
 export const COURSES: readonly Course[] = [V0_COURSE];
 
+/** Speech locale for the v0 course, taken from the seed file rather than hard-coded here. */
+export const V0_SPEECH_LOCALE = seedV0.defaultSpeechLocale;
+
 export function languageLabel(id: LanguageCode) {
   return LANGUAGES.find((language) => language.id === id)?.label ?? id;
 }

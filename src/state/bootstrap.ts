@@ -1,11 +1,22 @@
 import { useEffect, useState } from 'react';
 
 import { getDatabase, useDatabaseMigrations } from '@/data/db';
+import { createCourseRepo } from '@/data/repositories/courseRepo';
 import { createLearnerRepository } from '@/data/repositories/learnerRepo';
+import { createReviewRepo } from '@/data/repositories/reviewRepo';
+import { createSessionRepo } from '@/data/repositories/sessionRepo';
+import { createSettingsRepo } from '@/data/repositories/settingsRepo';
+import { createUnlockRepo } from '@/data/repositories/unlockRepo';
 import { DEFAULT_COURSE } from '@/data/seed/courses';
 import { loadSeed } from '@/data/seed/loadSeed';
+import { V0_COURSE } from '@/content/sample-lesson';
 
+import { bindAccent } from './accent';
 import { hydrateLearner } from './learnerStore';
+import { hydrateReview } from './reviewStore';
+import { hydrateSession } from './sessionStore';
+import { hydrateSettings, setKnownSpeechLocale } from './settingsStore';
+import { hydrateUnlock } from './unlockStore';
 
 export type BootstrapState = { ready: boolean; error: Error | null };
 
@@ -24,7 +35,18 @@ export function useAppBootstrap(): BootstrapState {
       try {
         const db = getDatabase();
         loadSeed(db, DEFAULT_COURSE, Date.now());
+        const settings = createSettingsRepo(db);
+        const courses = createCourseRepo(db);
+        const courseId = settings.get('activeCourseId') ?? V0_COURSE.courseId;
+        bindAccent((locale) => {
+          courses.setSpeechLocale(settings.get('activeCourseId') ?? V0_COURSE.courseId, locale);
+          setKnownSpeechLocale(locale);
+        });
+        hydrateSettings(settings, courses.get(courseId)?.speechLocale ?? null);
         await hydrateLearner(createLearnerRepository(db));
+        hydrateReview(createReviewRepo(db));
+        hydrateSession(createSessionRepo(db));
+        hydrateUnlock(createUnlockRepo(db));
         if (!cancelled) setState({ ready: true, error: null });
       } catch (error) {
         if (!cancelled) setState({ ready: false, error: error instanceof Error ? error : new Error(String(error)) });

@@ -61,6 +61,12 @@ export function foldSpanishDiacritics(text: string): string {
     .join('');
 }
 
+/** v0 accent choices. The screen imports these instead of naming the tags itself. */
+export const SPANISH_ACCENTS = [
+  { locale: 'es-MX', label: 'Latin America' },
+  { locale: 'es-ES', label: 'Spain' },
+] as const;
+
 export const esProfile: LanguageProfile = {
   lang: 'es',
   diacritics: 'lenient-with-hint',

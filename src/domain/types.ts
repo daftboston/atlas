@@ -1,5 +1,6 @@
 // Shared domain types. They mirror the learning-loop §3 entities that exist so far.
 // Pure TypeScript: no React, React Native, Expo, Drizzle or services imports.
+import type { WordScore } from '@/domain/scoring/types';
 
 /** BCP-47 language tag. Nothing in the domain is keyed on a specific language. */
 export type LanguageCode = string;
@@ -31,6 +32,13 @@ export const KNOWLEDGE_ITEM_STATUSES = [
   'suspended',
 ] as const;
 export type KnowledgeItemStatus = (typeof KNOWLEDGE_ITEM_STATUSES)[number];
+
+/** learning-loop §3.2. Names match the ts-fsrs `State` enum. */
+export const FSRS_STATES = ['New', 'Learning', 'Review', 'Relearning'] as const;
+export type FsrsStateName = (typeof FSRS_STATES)[number];
+
+/** Again, Hard, Good, Easy. Manual (0) is not a grade. */
+export type FsrsRating = 1 | 2 | 3 | 4;
 
 /** learning-loop §3.1 */
 export type KnowledgeItem = {
@@ -64,6 +72,8 @@ export type AppSettings = {
   sessionSize: number;
   desiredRetention: number;
   screenTimeEnabled: boolean;
+  /** True when the learner chose to continue without the microphone. */
+  micDenied: boolean;
 };
 
 /** The active course, as the current Learn and Settings screens see it. */
@@ -91,6 +101,71 @@ export type SavedWord = {
   score: null;
   /** ISO 8601. Stored as integer ms (UTC) in SQLite. */
   savedAt: string;
+};
+
+export const SESSION_MODES = ['onboarding', 'daily', 'review-only'] as const;
+
+/** learning-loop §3.7. */
+export const UNLOCK_STATUSES = ['earned', 'active', 'expired', 'forfeited'] as const;
+export type UnlockStatus = (typeof UNLOCK_STATUSES)[number];
+export type SessionMode = (typeof SESSION_MODES)[number];
+
+export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;
+export type SessionStatus = (typeof SESSION_STATUSES)[number];
+
+export const PROMPT_TYPES = ['listen-repeat', 'recall-speak'] as const;
+export type PromptType = (typeof PROMPT_TYPES)[number];
+
+export const INPUT_MODES = ['speech', 'typed'] as const;
+export type InputMode = (typeof INPUT_MODES)[number];
+
+export const ATTEMPT_STATUSES = ['pending', 'captured', 'scored', 'failed', 'skipped'] as const;
+export type AttemptStatus = (typeof ATTEMPT_STATUSES)[number];
+
+/** learning-loop §3.4. `plannedItemIds` stays in seed order. Steps are derived from it. */
+export type PracticeSession = {
+  id: string;
+  startedAt: number;
+  endedAt: number | null;
+  mode: SessionMode;
+  status: SessionStatus;
+  plannedItemIds: string[];
+  /** Index of the next step. Steps are `interleaveNewItems(plannedItemIds)`. */
+  cursor: number;
+};
+
+/** learning-loop §3.5 */
+export type PracticeAttempt = {
+  id: string;
+  sessionId: string;
+  itemId: string;
+  promptType: PromptType;
+  inputMode: InputMode;
+  tryNumber: number;
+  status: AttemptStatus;
+  transcript: string | null;
+  durationMs: number | null;
+  error: string | null;
+  /** True only for the attempt that updates the scheduler. Retries and technical failures stay false. */
+  graded: boolean;
+  startedAt: number;
+  endedAt: number | null;
+};
+
+/** learning-loop §3.6. One row per scored attempt. */
+export type AttemptFeedback = {
+  id: string;
+  attemptId: string;
+  overall: number;
+  accuracy: number;
+  pronunciation: number | null;
+  words: WordScore[];
+  method: 'text-match';
+  matchedText: string;
+  accentHints: string[];
+  rating: number | null;
+  hint: string | null;
+  createdAt: number;
 };
 
 /** Lesson content for a word the learner can save. */
