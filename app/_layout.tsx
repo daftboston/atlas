@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
+import { Wash } from '@/components/ui/Wash';
 import Colors from '@/constants/Colors';
 import { useAppBootstrap } from '@/state/bootstrap';
 import { useSettings } from '@/state/settingsStore';
@@ -45,7 +46,7 @@ export default function RootLayout() {
 
 function StartupError({ message }: { message: string }) {
   return (
-    <View style={styles.error}>
+    <View lightColor={Colors.light.wash} darkColor={Colors.dark.wash} style={styles.error}>
       <Text style={styles.errorTitle} accessibilityRole="header">
         Atlas couldn&apos;t open your saved data
       </Text>
@@ -75,8 +76,8 @@ function RootLayoutNav() {
     colors: {
       ...base.colors,
       primary: palette.tint,
-      background: palette.background,
-      card: palette.background,
+      background: 'transparent',
+      card: 'transparent',
       text: palette.text,
       border: palette.separator,
     },
@@ -84,14 +85,15 @@ function RootLayoutNav() {
 
   return (
     <ThemeProvider value={theme}>
-      {redirect}
-      <Stack
+      <View style={styles.root}>
+        <Wash />
+        {redirect}
+        <Stack
         screenOptions={{
           headerShadowVisible: false,
-          headerStyle: { backgroundColor: palette.background },
           headerTitleStyle: { color: palette.text },
           headerTintColor: palette.tint,
-          contentStyle: { backgroundColor: palette.background },
+          contentStyle: { backgroundColor: 'transparent' },
         }}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="(onboarding)" options={{ headerShown: false }} />
@@ -100,12 +102,14 @@ function RootLayoutNav() {
           options={{ presentation: 'fullScreenModal', title: 'Practice' }}
         />
         <Stack.Screen name="practice/summary/[sessionId]" options={{ title: 'Summary' }} />
-      </Stack>
+        </Stack>
+      </View>
     </ThemeProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1 },
   error: {
     flex: 1,
     padding: 24,

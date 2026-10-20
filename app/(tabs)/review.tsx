@@ -19,10 +19,11 @@ function upcomingLabel(due: number, now: number): string {
 
 function Entry({ entry, detail, action }: { entry: ReviewEntry; detail: string; action: 'suspend' | 'unsuspend' }) {
   const secondary = useThemeColor({}, 'secondaryText');
+  const accent = useThemeColor({}, 'accent');
   return (
     <View style={styles.entryRow}>
       <View style={styles.entryText}>
-        <Text style={styles.word}>{entry.targetText}</Text>
+        <Text style={[styles.word, { color: accent }]}>{entry.targetText}</Text>
         <Text style={[styles.meta, { color: secondary }]}>
           {entry.meaning} · {detail}
         </Text>
@@ -43,6 +44,8 @@ export default function ReviewScreen() {
   const router = useRouter();
   const now = review.now;
   const secondary = useThemeColor({}, 'secondaryText');
+  const tint = useThemeColor({}, 'tint');
+  const accent = useThemeColor({}, 'accent');
 
   useEffect(() => {
     refreshReview();
@@ -68,7 +71,7 @@ export default function ReviewScreen() {
           <Group>
             {saved.map((word) => (
               <View key={word.id} style={styles.entry}>
-                <Text style={styles.word}>{word.text}</Text>
+                <Text style={[styles.word, { color: accent }]}>{word.text}</Text>
                 <Text style={[styles.meta, { color: secondary }]}>
                   {word.meaning} · {word.status === 'ready-to-review' ? 'Ready to review' : word.status}
                 </Text>
@@ -93,7 +96,7 @@ export default function ReviewScreen() {
   return (
     <ScrollView contentContainerStyle={styles.content} contentInsetAdjustmentBehavior="automatic">
       <ScreenTitle>Review</ScreenTitle>
-      <Text style={styles.mastered}>Mastered {masteredCount}</Text>
+      <Text style={[styles.mastered, { color: tint }]}>Mastered {masteredCount}</Text>
       {due.length > 0 ? (
         <View style={styles.block}>
           <SectionHeader>Due now</SectionHeader>
@@ -145,7 +148,7 @@ export default function ReviewScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, gap: 22, paddingBottom: 40 },
+  content: { padding: 16, gap: 22, paddingBottom: 128 },
   block: { gap: 0 },
   action: { marginTop: 12 },
   mastered: { fontSize: 22, fontWeight: '700' },

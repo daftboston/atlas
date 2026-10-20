@@ -166,7 +166,7 @@ export default function SettingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, gap: 22, paddingBottom: 40 },
+  content: { padding: 16, gap: 22, paddingBottom: 128 },
   section: { gap: 0 },
   courseRow: { paddingHorizontal: 16, paddingVertical: 12 },
   courseTitle: { fontSize: 17, lineHeight: 22 },

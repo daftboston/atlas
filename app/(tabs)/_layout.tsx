@@ -1,7 +1,9 @@
 import { SymbolView } from 'expo-symbols';
 import { Tabs } from 'expo-router';
+import { StyleSheet } from 'react-native';
 
 import { useColorScheme } from '@/components/useColorScheme';
+import { GlassSurface } from '@/components/ui/Glass';
 import Colors from '@/constants/Colors';
 
 // Tab bar from architecture §3: Learn, Review, Unlock, Settings.
@@ -17,7 +19,16 @@ export default function TabLayout() {
         tabBarInactiveTintColor: palette.tabIconDefault,
         // The screen draws its own large title. A second bar would repeat it.
         headerShown: false,
-        tabBarStyle: { backgroundColor: palette.background },
+        sceneStyle: { backgroundColor: 'transparent' },
+        tabBarStyle: styles.tabBar,
+        tabBarBackground: () => (
+          <GlassSurface
+            glassEffectStyle="clear"
+            tintColor={palette.glass}
+            fallbackColor={palette.card}
+            style={StyleSheet.absoluteFill}
+          />
+        ),
       }}>
       <Tabs.Screen
         name="learn"
@@ -66,3 +77,13 @@ export default function TabLayout() {
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  tabBar: {
+    position: 'absolute',
+    backgroundColor: 'transparent',
+    borderTopWidth: 0,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+});

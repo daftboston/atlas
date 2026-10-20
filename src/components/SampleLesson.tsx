@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 
 import { FeedbackPanel } from '@/components/practice/FeedbackPanel';
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { GlassCluster } from '@/components/ui/Glass';
 import { Field, PrimaryButton, SecondaryButton, SectionHeader } from '@/components/ui/ios';
 import { sampleWord, V0_SPEECH_LOCALE } from '@/content/sample-lesson';
 import { feedbackFor, hintLine, type FeedbackState } from '@/domain/scoring/feedback';
@@ -15,6 +16,7 @@ import { getDevScript, scriptedStep } from '@/state/devSpeechScript';
 export function SampleLesson() {
   const { profile, words } = useLearner();
   const secondary = useThemeColor({}, 'secondaryText');
+  const accent = useThemeColor({}, 'accent');
   const [speech] = useState<SpeechService>(() => createSpeechService());
   const typedRef = useRef('');
   const [typed, setTyped] = useState('');
@@ -89,27 +91,29 @@ export function SampleLesson() {
   return (
     <View style={styles.block}>
       <SectionHeader>Sample lesson</SectionHeader>
-      <Text style={styles.word}>{sample.text}</Text>
+      <Text style={[styles.word, { color: accent }]}>{sample.text}</Text>
       <Text style={styles.meaning}>{sample.meaning}</Text>
       <Text style={styles.example}>{sample.example}</Text>
       <Text style={[styles.note, { color: secondary }]}>The microphone is simulated until on-device recognition is verified.</Text>
 
-      <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} />
-      {played ? <Text style={[styles.note, { color: secondary }]}>Played.</Text> : null}
+      <GlassCluster style={styles.controls} spacing={16}>
+        <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} />
+        {played ? <Text style={[styles.note, { color: secondary }]}>Played.</Text> : null}
 
-      <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} />
-      <Field label="Type the phrase" value={typed} onChangeText={onType} returnKeyType="done" onSubmitEditing={() => void checkTyped()} />
-      <SecondaryButton label="Check typing" disabled={typed.trim().length === 0} onPress={() => void checkTyped()} />
+        <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} />
+        <Field label="Type the phrase" value={typed} onChangeText={onType} returnKeyType="done" onSubmitEditing={() => void checkTyped()} />
+        <SecondaryButton label="Check typing" disabled={typed.trim().length === 0} onPress={() => void checkTyped()} />
 
-      {feedback ? <FeedbackPanel state={feedback} hint={hint} /> : null}
-      {feedback ? <SecondaryButton label="Try again" disabled={busy} onPress={() => void repeat()} /> : null}
+        {feedback ? <FeedbackPanel state={feedback} hint={hint} /> : null}
+        {feedback ? <SecondaryButton label="Try again" disabled={busy} onPress={() => void repeat()} /> : null}
 
-      <Text style={[styles.note, { color: secondary }]}>
-        {saved
-          ? 'Saved. This word is ready to review, not mastered.'
-          : 'Saving marks this word ready to review. It does not mean you have mastered it.'}
-      </Text>
-      <PrimaryButton label={saved ? 'Word saved' : 'Save word'} title={saved ? 'Saved' : 'Save word'} disabled={saved} onPress={() => saveWord(sample)} />
+        <Text style={[styles.note, { color: secondary }]}>
+          {saved
+            ? 'Saved. This word is ready to review, not mastered.'
+            : 'Saving marks this word ready to review. It does not mean you have mastered it.'}
+        </Text>
+        <PrimaryButton label={saved ? 'Word saved' : 'Save word'} title={saved ? 'Saved' : 'Save word'} disabled={saved} onPress={() => saveWord(sample)} />
+      </GlassCluster>
     </View>
   );
 }
@@ -120,6 +124,7 @@ function isMockSpeech(service: SpeechService): service is MockSpeechService {
 
 const styles = StyleSheet.create({
   block: { gap: 8 },
+  controls: { gap: 8 },
   word: { fontSize: 34, fontWeight: '700' },
   meaning: { fontSize: 20, fontWeight: '600' },
   example: { fontSize: 17, lineHeight: 22 },

@@ -74,7 +74,7 @@ export default function UnlockScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 16, gap: 8, paddingBottom: 40 },
+  content: { padding: 16, gap: 8, paddingBottom: 128 },
   status: { paddingHorizontal: 16, paddingVertical: 12 },
   copy: { fontSize: 17, lineHeight: 22 },
   empty: { marginTop: 16 },

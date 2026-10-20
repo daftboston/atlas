@@ -1,38 +1,57 @@
 /**
- * Apple system colors from the Human Interface Guidelines:
- * system background, grouped background, label, secondary label, separator,
- * and system blue / green / orange / red.
+ * Harbor. Atlas is a coast, not a system-gray settings app.
+ * Tide is the action color. Coral marks the phrase being learned.
+ * Sand, foam, and dusk sit behind the glass so it has color to bend.
+ * Ink is the reading color. Light and dark each keep their own orbs.
  */
-const tintLight = '#007AFF';
-const tintDark = '#0A84FF';
+const tideLight = '#0B7C82';
+const tideDark = '#5EE0D6';
+const coralLight = '#E15A3A';
+const coralDark = '#FF8B6A';
 
-export default {
+const palette = {
   light: {
-    text: '#000000',
-    secondaryText: '#3C3C4399',
-    background: '#F2F2F7',
-    card: '#FFFFFF',
-    fill: '#E5E5EA',
-    separator: '#3C3C434A',
-    tint: tintLight,
-    danger: '#FF3B30',
-    success: '#248A3D',
-    warning: '#C93400',
-    tabIconDefault: '#8E8E93',
-    tabIconSelected: tintLight,
+    text: '#14262C',
+    secondaryText: '#3E5C64',
+    background: '#D7F1EE',
+    card: '#FFFFFFCC',
+    fill: '#FFFFFFA6',
+    glass: '#FFFFFF38',
+    separator: '#0B7C8233',
+    tint: tideLight,
+    accent: coralLight,
+    danger: '#D23B2F',
+    success: '#1B7F45',
+    warning: '#C4511A',
+    tabIconDefault: '#5C787E',
+    tabIconSelected: tideLight,
+    wash: '#D7F1EE',
+    orbTide: '#7EDDD4',
+    orbSand: '#F6D7B0',
+    orbCoral: '#F7B5A0',
+    orbDusk: '#D4C2F4',
   },
   dark: {
-    text: '#FFFFFF',
-    secondaryText: '#EBEBF599',
-    background: '#000000',
-    card: '#1C1C1E',
-    fill: '#2C2C2E',
-    separator: '#545458A6',
-    tint: tintDark,
-    danger: '#FF453A',
-    success: '#30D158',
-    warning: '#FF9F0A',
-    tabIconDefault: '#8E8E93',
-    tabIconSelected: tintDark,
+    text: '#F3FBFA',
+    secondaryText: '#A9C6CB',
+    background: '#071418',
+    card: '#12343ACC',
+    fill: '#12343AA6',
+    glass: '#FFFFFF22',
+    separator: '#5EE0D640',
+    tint: tideDark,
+    accent: coralDark,
+    danger: '#FF6B63',
+    success: '#3DDB86',
+    warning: '#FFB086',
+    tabIconDefault: '#7E9AA0',
+    tabIconSelected: tideDark,
+    wash: '#071418',
+    orbTide: '#0E6A72',
+    orbSand: '#8A5A32',
+    orbCoral: '#A33B32',
+    orbDusk: '#3A2A62',
   },
 };
+
+export default palette;

@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { GlassCluster } from '@/components/ui/Glass';
 import { Field, PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/ios';
 import { feedbackFor, hintLine, type FeedbackState, type ListenOutcome } from '@/domain/scoring/feedback';
 import type { TextMatchResult } from '@/domain/scoring/types';
@@ -30,6 +31,7 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   const [confirmLeave, setConfirmLeave] = useState(false);
   const allowLeave = useRef(false);
   const secondary = useThemeColor({}, 'secondaryText');
+  const accent = useThemeColor({}, 'accent');
 
   const active = view?.session.status === 'active';
 
@@ -210,41 +212,43 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   return (
     <View style={styles.screen}>
       <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets>
-        <Text style={[styles.kicker, { color: secondary }]}>
+        <Text style={[styles.kicker, { color: accent }]}>
           Step {view.session.cursor + 1} of {view.steps.length}
         </Text>
         <Text style={styles.meaning}>{step.meaning}</Text>
-        {showTarget ? <Text style={styles.word}>{step.targetText}</Text> : null}
+        {showTarget ? <Text style={[styles.word, { color: accent }]}>{step.targetText}</Text> : null}
         <Text style={[styles.note, { color: secondary }]}>
           {step.promptType === 'listen-repeat'
             ? 'Listen, then say it. The microphone is simulated.'
             : 'Say the phrase from the meaning. The microphone is simulated.'}
         </Text>
 
-        {step.promptType === 'listen-repeat' ? <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} /> : null}
-        {played ? <Text style={[styles.note, { color: secondary }]}>Played.</Text> : null}
+        <GlassCluster style={styles.controls} spacing={16}>
+          {step.promptType === 'listen-repeat' ? <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} /> : null}
+          {played ? <Text style={[styles.note, { color: secondary }]}>Played.</Text> : null}
 
-        {canAnswer ? (
-          <>
-            <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} />
-            <Field
-              label="Type the phrase"
-              value={typed}
-              onChangeText={(value) => {
-                typedRef.current = value;
-                setTyped(value);
-              }}
-              returnKeyType="done"
-              onSubmitEditing={() => void checkTyped()}
-            />
-            <SecondaryButton label="Check typing" disabled={typed.trim().length === 0} onPress={() => void checkTyped()} />
-            <SecondaryButton label="I don't know" disabled={busy} onPress={skip} />
-          </>
-        ) : null}
+          {canAnswer ? (
+            <>
+              <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} />
+              <Field
+                label="Type the phrase"
+                value={typed}
+                onChangeText={(value) => {
+                  typedRef.current = value;
+                  setTyped(value);
+                }}
+                returnKeyType="done"
+                onSubmitEditing={() => void checkTyped()}
+              />
+              <SecondaryButton label="Check typing" disabled={typed.trim().length === 0} onPress={() => void checkTyped()} />
+              <SecondaryButton label="I don't know" disabled={busy} onPress={skip} />
+            </>
+          ) : null}
 
-        {feedback ? <FeedbackPanel state={feedback} hint={hint} /> : null}
-        {skipped ? <Text style={styles.copy}>Skipped.</Text> : null}
-        {canAdvance ? <PrimaryButton label="Next" onPress={next} /> : null}
+          {feedback ? <FeedbackPanel state={feedback} hint={hint} /> : null}
+          {skipped ? <Text style={styles.copy}>Skipped.</Text> : null}
+          {canAdvance ? <PrimaryButton label="Next" onPress={next} /> : null}
+        </GlassCluster>
 
         {confirmLeave ? (
           <View style={styles.confirm}>
@@ -272,6 +276,7 @@ const styles = StyleSheet.create({
     padding: 24,
     gap: 12,
   },
+  controls: { gap: 12 },
   title: {
     fontSize: 28,
     fontWeight: '700',

@@ -9,6 +9,7 @@ export function SessionHome() {
   const { ready, home } = useSessionHome();
   const router = useRouter();
   const secondary = useThemeColor({}, 'secondaryText');
+  const tint = useThemeColor({}, 'tint');
   if (!ready) return null;
 
   function open(sessionId: string) {
@@ -35,7 +36,7 @@ export function SessionHome() {
         <>
           <Group>
             <View style={styles.card}>
-              {home.dueCount > 0 ? <Text style={styles.copy}>{home.dueCount} due</Text> : null}
+              {home.dueCount > 0 ? <Text style={[styles.copy, styles.due, { color: tint }]}>{home.dueCount} due</Text> : null}
               {home.newRemaining > 0 ? (
                 <Text style={styles.copy}>
                   {home.newRemaining} new {home.newRemaining === 1 ? 'phrase' : 'phrases'} left today
@@ -63,5 +64,6 @@ const styles = StyleSheet.create({
   block: { gap: 0 },
   card: { paddingHorizontal: 16, paddingVertical: 12, gap: 4 },
   copy: { fontSize: 17, lineHeight: 22 },
+  due: { fontWeight: '700' },
   action: { marginTop: 12 },
 });

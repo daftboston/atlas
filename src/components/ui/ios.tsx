@@ -4,6 +4,7 @@ import { Pressable, StyleSheet, TextInput, type TextInputProps } from 'react-nat
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { GlassSurface } from '@/components/ui/Glass';
 
 type Press = {
   label: string;
@@ -20,9 +21,11 @@ export function usePalette() {
     card: useThemeColor({}, 'card'),
     fill: useThemeColor({}, 'fill'),
     tint: useThemeColor({}, 'tint'),
+    accent: useThemeColor({}, 'accent'),
     danger: useThemeColor({}, 'danger'),
     separator: useThemeColor({}, 'separator'),
     background: useThemeColor({}, 'background'),
+    glass: useThemeColor({}, 'glass'),
   };
 }
 
@@ -35,17 +38,20 @@ export function PrimaryButton({ label, title, onPress, disabled }: Press) {
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.primary, { backgroundColor: tint }, pressed && styles.pressed, disabled && styles.disabled]}>
-      <Text style={styles.primaryText} lightColor="#fff" darkColor="#fff">
-        {title ?? label}
-      </Text>
+      style={({ pressed }) => [styles.primary, pressed && styles.pressed, disabled && styles.disabled]}>
+      <GlassSurface glassEffectStyle="clear" isInteractive={!disabled} tintColor={tint} fallbackColor={tint} style={styles.primaryGlass}>
+        <Text style={styles.primaryText} lightColor="#fff" darkColor="#fff">
+          {title ?? label}
+        </Text>
+      </GlassSurface>
     </Pressable>
   );
 }
 
 export function SecondaryButton({ label, title, onPress, disabled }: Press) {
-  const fill = useThemeColor({}, 'fill');
   const text = useThemeColor({}, 'text');
+  const glass = useThemeColor({}, 'glass');
+  const fill = useThemeColor({}, 'fill');
   return (
     <Pressable
       accessibilityRole="button"
@@ -53,8 +59,10 @@ export function SecondaryButton({ label, title, onPress, disabled }: Press) {
       accessibilityState={{ disabled: !!disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [styles.secondary, { backgroundColor: fill }, pressed && styles.pressed, disabled && styles.disabled]}>
-      <Text style={[styles.buttonText, { color: text }]}>{title ?? label}</Text>
+      style={({ pressed }) => [styles.secondary, pressed && styles.pressed, disabled && styles.disabled]}>
+      <GlassSurface glassEffectStyle="clear" isInteractive={!disabled} tintColor={glass} fallbackColor={fill} style={styles.secondaryGlass}>
+        <Text style={[styles.buttonText, { color: text }]}>{title ?? label}</Text>
+      </GlassSurface>
     </Pressable>
   );
 }
@@ -81,7 +89,7 @@ export function TextButton({
 }
 
 export function SectionHeader({ children }: { children: string }) {
-  const color = useThemeColor({}, 'secondaryText');
+  const color = useThemeColor({}, 'accent');
   return (
     <Text style={[styles.header, { color }]} accessibilityLabel={children}>
       {children}
@@ -96,17 +104,18 @@ export function SectionFooter({ children }: { children: string }) {
 
 export function Group({ children }: { children: ReactNode }) {
   const card = useThemeColor({}, 'card');
+  const glass = useThemeColor({}, 'glass');
   const separator = useThemeColor({}, 'separator');
   const items = Children.toArray(children);
   return (
-    <View style={[styles.group, { backgroundColor: card }]}>
+    <GlassSurface glassEffectStyle="clear" tintColor={glass} fallbackColor={card} style={styles.group}>
       {items.map((child, index) => (
         <Fragment key={index}>
           {child}
           {index < items.length - 1 ? <View style={[styles.separator, { backgroundColor: separator }]} /> : null}
         </Fragment>
       ))}
-    </View>
+    </GlassSurface>
   );
 }
 
@@ -156,13 +165,14 @@ export function StepperRow({
 }) {
   const tint = useThemeColor({}, 'tint');
   const fill = useThemeColor({}, 'fill');
+  const glass = useThemeColor({}, 'glass');
   const separator = useThemeColor({}, 'separator');
   const secondary = useThemeColor({}, 'secondaryText');
   return (
     <View style={styles.row}>
       <Text style={styles.rowLabel}>{label}</Text>
       <Text style={[styles.stepValue, { color: secondary }]}>{value}</Text>
-      <View style={[styles.stepper, { backgroundColor: fill }]}>
+      <GlassSurface glassEffectStyle="clear" tintColor={glass} fallbackColor={fill} style={styles.stepper}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={decreaseLabel}
@@ -182,7 +192,7 @@ export function StepperRow({
           style={[styles.step, !canIncrease && styles.disabled]}>
           <Text style={[styles.stepGlyph, { color: tint }]}>+</Text>
         </Pressable>
-      </View>
+      </GlassSurface>
     </View>
   );
 }
@@ -191,25 +201,32 @@ export function Field(props: TextInputProps & { label: string }) {
   const { label, style, ...rest } = props;
   const text = useThemeColor({}, 'text');
   const fill = useThemeColor({}, 'fill');
+  const glass = useThemeColor({}, 'glass');
   const secondary = useThemeColor({}, 'secondaryText');
   return (
-    <TextInput
-      accessibilityLabel={label}
-      placeholder={label}
-      placeholderTextColor={secondary}
-      autoCapitalize="none"
-      autoCorrect={false}
-      style={[styles.field, { backgroundColor: fill, color: text }, style]}
-      {...rest}
-    />
+    <GlassSurface glassEffectStyle="clear" tintColor={glass} fallbackColor={fill} style={styles.fieldShell}>
+      <TextInput
+        accessibilityLabel={label}
+        placeholder={label}
+        placeholderTextColor={secondary}
+        autoCapitalize="none"
+        autoCorrect={false}
+        style={[styles.field, { color: text }, style]}
+        {...rest}
+      />
+    </GlassSurface>
   );
 }
 
 export function ScreenTitle({ children }: { children: string }) {
+  const accent = useThemeColor({}, 'accent');
   return (
-    <Text style={styles.largeTitle} accessibilityRole="header">
-      {children}
-    </Text>
+    <View style={styles.titleRow}>
+      <View style={[styles.titleMark, { backgroundColor: accent }]} />
+      <Text style={styles.largeTitle} accessibilityRole="header">
+        {children}
+      </Text>
+    </View>
   );
 }
 
@@ -229,9 +246,7 @@ export function OnboardingFrame({
   return (
     <View style={[styles.onboarding, { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 16) }]}>
       <View style={styles.onboardingBody}>
-        <Text style={styles.largeTitle} accessibilityRole="header">
-          {title}
-        </Text>
+        <ScreenTitle>{title}</ScreenTitle>
         <Text style={[styles.body, { color: secondary }]}>{copy}</Text>
         {children}
       </View>
@@ -243,35 +258,40 @@ export function OnboardingFrame({
 const stepHit = { top: 10, bottom: 10, left: 8, right: 8 };
 
 const styles = StyleSheet.create({
-  primary: {
+  primary: { borderRadius: 22 },
+  primaryGlass: {
     minHeight: 50,
-    borderRadius: 14,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   primaryText: { fontSize: 17, fontWeight: '600' },
-  secondary: {
+  secondary: { borderRadius: 22 },
+  secondaryGlass: {
     minHeight: 50,
-    borderRadius: 14,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 16,
   },
   textButton: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8 },
   buttonText: { fontSize: 17, fontWeight: '600' },
-  pressed: { opacity: 0.65 },
-  disabled: { opacity: 0.35 },
+  pressed: { opacity: 0.72 },
+  disabled: { opacity: 0.4 },
   header: {
     fontSize: 13,
-    fontWeight: '400',
+    fontWeight: '700',
+    letterSpacing: 0.8,
     textTransform: 'uppercase',
     marginHorizontal: 16,
     marginBottom: 6,
   },
-  footer: { fontSize: 13, lineHeight: 18, marginHorizontal: 16, marginTop: 6 },
-  group: { borderRadius: 10, overflow: 'hidden' },
+  footer: { fontSize: 13, lineHeight: 18, marginHorizontal: 16, marginTop: 8 },
+  group: { borderRadius: 26, overflow: 'hidden' },
   separator: { height: StyleSheet.hairlineWidth, marginLeft: 16 },
+  titleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  titleMark: { width: 8, height: 28, borderRadius: 4 },
   row: {
     minHeight: 44,
     paddingHorizontal: 16,
@@ -282,16 +302,17 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   rowLabel: { fontSize: 17, flex: 1, flexShrink: 1 },
-  stepper: { flexDirection: 'row', alignItems: 'center', borderRadius: 8, overflow: 'hidden' },
+  stepper: { flexDirection: 'row', alignItems: 'center', borderRadius: 12, overflow: 'hidden' },
   step: { width: 36, height: 32, alignItems: 'center', justifyContent: 'center' },
   stepRule: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch' },
   stepGlyph: { fontSize: 20, lineHeight: 22, fontWeight: '500' },
   stepValue: { minWidth: 24, textAlign: 'right', fontSize: 17, fontVariant: ['tabular-nums'] },
+  fieldShell: { borderRadius: 18, overflow: 'hidden' },
   field: {
     minHeight: 44,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    paddingHorizontal: 16,
     fontSize: 17,
+    backgroundColor: 'transparent',
   },
   onboarding: { flex: 1, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20 },
   onboardingBody: { flex: 1, gap: 12 },
