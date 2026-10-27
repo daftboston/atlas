@@ -1,6 +1,6 @@
 import { SymbolView } from 'expo-symbols';
 import { Children, Fragment, type ReactNode } from 'react';
-import { Pressable, StyleSheet, TextInput, type TextInputProps } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, TextInput, type TextInputProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
@@ -40,7 +40,7 @@ export function PrimaryButton({ label, title, onPress, disabled }: Press) {
       onPress={onPress}
       style={({ pressed }) => [styles.primary, pressed && styles.pressed, disabled && styles.disabled]}>
       <GlassSurface glassEffectStyle="clear" isInteractive={!disabled} tintColor={tint} fallbackColor={tint} style={styles.primaryGlass}>
-        <Text style={styles.primaryText} lightColor="#fff" darkColor="#fff">
+        <Text style={styles.primaryText} lightColor="#fff" darkColor="#071418">
           {title ?? label}
         </Text>
       </GlassSurface>
@@ -245,11 +245,12 @@ export function OnboardingFrame({
   const insets = useSafeAreaInsets();
   return (
     <View style={[styles.onboarding, { paddingTop: insets.top + 8, paddingBottom: Math.max(insets.bottom, 16) }]}>
-      <View style={styles.onboardingBody}>
+      {/* Scrolls so large Dynamic Type sizes never push the footer buttons off the screen. */}
+      <ScrollView style={styles.onboardingScroll} contentContainerStyle={styles.onboardingBody} keyboardShouldPersistTaps="handled">
         <ScreenTitle>{title}</ScreenTitle>
         <Text style={[styles.body, { color: secondary }]}>{copy}</Text>
         {children}
-      </View>
+      </ScrollView>
       <View style={styles.onboardingFooter}>{footer}</View>
     </View>
   );
@@ -315,7 +316,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   onboarding: { flex: 1, paddingHorizontal: 20, paddingTop: 24, paddingBottom: 20 },
-  onboardingBody: { flex: 1, gap: 12 },
+  onboardingScroll: { flex: 1 },
+  onboardingBody: { gap: 12, paddingBottom: 12 },
   onboardingFooter: { gap: 8 },
   largeTitle: { fontSize: 34, fontWeight: '700', letterSpacing: 0.4 },
   body: { fontSize: 17, lineHeight: 22 },

@@ -1,11 +1,19 @@
 import { useRouter } from 'expo-router';
 
+import { useSpeechMode, type SpeechMode } from '@/components/practice/useSpeechCapabilities';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { Group, PrimaryButton, SectionFooter, SectionHeader } from '@/components/ui/ios';
 import { startDailySession, useSessionHome } from '@/state/sessionStore';
 import { StyleSheet } from 'react-native';
 
+function footerCopy(mode: SpeechMode): string {
+  if (mode === 'typed-only') return "Type each phrase from its meaning. Speaking isn't available in this build.";
+  if (mode === 'simulated' && __DEV__) return 'Hear a phrase, say it back, or type it. The microphone is simulated.';
+  return 'Hear a phrase, say it back, or type it.';
+}
+
 export function SessionHome() {
+  const mode = useSpeechMode();
   const { ready, home } = useSessionHome();
   const router = useRouter();
   const secondary = useThemeColor({}, 'secondaryText');
@@ -55,7 +63,7 @@ export function SessionHome() {
           </View>
         </>
       )}
-      <SectionFooter>Hear a phrase, say it back, or type it. The microphone on this Mac is simulated.</SectionFooter>
+      <SectionFooter>{footerCopy(mode)}</SectionFooter>
     </View>
   );
 }

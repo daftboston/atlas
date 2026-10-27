@@ -19,13 +19,15 @@ function Grant({ grant, now }: { grant: UnlockGrantRow; now: number }) {
     <View style={styles.grant}>
       <Text style={styles.minutes}>{grant.minutes} minutes</Text>
       {grant.status === 'active' && grant.expiresAt !== null ? (
-        <Text style={[styles.meta, { color: secondary }]}>{remainingLabel(grant.expiresAt, now)}</Text>
+        <Text style={[styles.meta, { color: secondary }]} accessibilityRole="timer">
+          {remainingLabel(grant.expiresAt, now)}
+        </Text>
       ) : null}
       {grant.status === 'earned' ? <Text style={[styles.meta, { color: secondary }]}>Earned</Text> : null}
       {grant.status === 'expired' ? <Text style={[styles.meta, { color: secondary }]}>Expired</Text> : null}
       {grant.status === 'earned' ? (
         <View style={styles.activate}>
-          <PrimaryButton label="Activate" onPress={() => void activateGrant(grant.id)} />
+          <PrimaryButton label={`Activate ${grant.minutes} minutes`} title="Activate" onPress={() => void activateGrant(grant.id)} />
         </View>
       ) : null}
     </View>
@@ -45,7 +47,9 @@ export default function UnlockScreen() {
   const visible = unlock.grants.filter((grant) => grant.status !== 'forfeited');
   const status =
     unlock.availability === 'authorized'
-      ? 'Screen Time is simulated as on.'
+      ? __DEV__
+        ? 'Screen Time is simulated as on.'
+        : 'Screen Time is on.'
       : 'Screen Time is unavailable. This timer still runs.';
 
   return (

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 
+import { createSpeechService } from '@/services/speech/registry';
 import type { SpeechCapabilities, SpeechService } from '@/services/speech/types';
 
 /**
@@ -25,4 +26,21 @@ export function useSpeechCapabilities(speech: SpeechService): SpeechCapabilities
   }, [speech]);
 
   return capabilities;
+}
+
+/**
+ * What the learner can do by voice in this build. `typed-only` is a release build with no speech engine,
+ * so no screen may mention a microphone. `simulated` is development, where the mock answers.
+ */
+export type SpeechMode = 'loading' | 'typed-only' | 'simulated' | 'device';
+
+export function speechModeOf(capabilities: SpeechCapabilities | null): SpeechMode {
+  if (!capabilities) return 'loading';
+  if (!capabilities.stt) return 'typed-only';
+  return capabilities.onDevice ? 'device' : 'simulated';
+}
+
+export function useSpeechMode(): SpeechMode {
+  const [speech] = useState<SpeechService>(() => createSpeechService());
+  return speechModeOf(useSpeechCapabilities(speech));
 }

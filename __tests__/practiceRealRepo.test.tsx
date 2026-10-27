@@ -248,6 +248,7 @@ describe('PracticeSession on the real repository', () => {
       jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
       await fireEvent.press(await screen.findByRole('button', { name: 'Hear it' }));
       expect(screen.getByRole('button', { name: 'Hear it' })).toBeDisabled();
+      expect(screen.getByText('Playing the phrase.')).toBeOnTheScreen();
       await act(async () => {
         jest.advanceTimersByTime(SPEECH_TIMEOUT_MS);
       });
@@ -255,6 +256,8 @@ describe('PracticeSession on the real repository', () => {
       expect(stopSpeaking).toHaveBeenCalledTimes(1);
       expect(screen.getByRole('button', { name: 'Hear it' })).toBeEnabled();
       expect(screen.queryByText('Played.')).toBeNull();
+      expect(screen.queryByText('Playing the phrase.')).toBeNull();
+      expect(screen.getByText("The audio didn't play. Tap Hear it to try again, or type the phrase.")).toBeOnTheScreen();
       await typeAnswer('Hola');
       await fireEvent.press(screen.getByRole('button', { name: 'Check typing' }));
       expect(await screen.findByRole('button', { name: 'Next' })).toBeOnTheScreen();
@@ -270,12 +273,15 @@ describe('PracticeSession on the real repository', () => {
       jest.useFakeTimers({ doNotFake: ['setImmediate', 'nextTick'] });
       await fireEvent.press(await screen.findByRole('button', { name: 'Repeat' }));
       expect(screen.getByRole('button', { name: 'Repeat' })).toBeDisabled();
+      expect(screen.getByText('Listening. Say the phrase now.')).toBeOnTheScreen();
       await act(async () => {
         jest.advanceTimersByTime(SPEECH_TIMEOUT_MS);
       });
       await flush();
       expect(cancel).toHaveBeenCalledTimes(1);
       expect(screen.getByRole('button', { name: 'Repeat' })).toBeEnabled();
+      expect(screen.queryByText('Listening. Say the phrase now.')).toBeNull();
+      expect(screen.getByText("I couldn't hear a response. Tap Repeat to try again, or type the phrase.")).toBeOnTheScreen();
       expect(attempts()).toHaveLength(0);
     });
 
@@ -325,5 +331,29 @@ describe('PracticeSession on the real repository', () => {
       expect(cancel).toHaveBeenCalledTimes(1);
       expect(screen.getByRole('button', { name: 'Repeat' })).toBeEnabled();
     });
+  });
+  describe('dead ends', () => {
+    it('an abandoned session opened with no history still has a working Back to Learn', async () => {
+      await boot();
+      repo.abandon(id, Date.now());
+      const app = renderRouter(appDir, { initialUrl: `/practice/${id}` });
+      await app;
+      expect(await screen.findByText('This session was abandoned.')).toBeOnTheScreen();
+      expect(screen.getByText('Answers you already gave stay saved. Start a new session from Learn.')).toBeOnTheScreen();
+      await fireEvent.press(screen.getByRole('button', { name: 'Back to Learn' }));
+      await waitFor(() => expect(app.getPathname()).toBe('/learn'));
+    });
+
+    it.each(['/practice/missing-session', '/practice/summary/missing-session'])(
+      'a session that is not on this device offers a way out (%s)',
+      async (url) => {
+        await boot();
+        const app = renderRouter(appDir, { initialUrl: url });
+        await app;
+        expect(await screen.findByText("This session isn't on this device.")).toBeOnTheScreen();
+        await fireEvent.press(screen.getByRole('button', { name: 'Back to Learn' }));
+        await waitFor(() => expect(app.getPathname()).toBe('/learn'));
+      },
+    );
   });
 });
