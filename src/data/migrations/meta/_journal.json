@@ -29,6 +29,20 @@
       "when": 1791512622724,
       "tag": "0003_large_kingpin",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793138551346,
+      "tag": "0004_abandon_extra_active_sessions",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1793138558166,
+      "tag": "0005_practice_sessions_single_active",
+      "breakpoints": true
     }
   ]
 }

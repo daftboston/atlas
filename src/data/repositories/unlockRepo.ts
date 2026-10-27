@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm';
 
-import { activeGrantExpired, unusedGrantForfeited } from '@/domain/unlock/unlockRules';
+import { activeGrantExpired, grantActivatable, unusedGrantForfeited } from '@/domain/unlock/unlockRules';
 import type { UnlockStatus } from '@/domain/types';
 
 import type { AtlasDatabase } from '../client';
@@ -49,10 +49,21 @@ export function createUnlockRepo(db: AtlasDatabase) {
       return expired;
     },
 
-    /** `earned` becomes `active`. The caller talks to Screen Time after this write. */
+    /**
+     * `earned` becomes `active`. The caller talks to Screen Time after this write.
+     * Returns null, and writes nothing, for an unknown grant, one that is already active or used
+     * (`active`, `expired`), or one past `expiresUnusedAt` (learning-loop §8: unused grants are
+     * forfeited at the next rollover). A late grant is forfeited on the spot, so its status
+     * doesn't wait for the next reconcile.
+     */
     activate(id: string, now: number): UnlockGrantRow | null {
       const grant = row(id);
-      if (!grant || grant.status !== 'earned') return null;
+      if (!grant) return null;
+      if (grant.status === 'earned' && unusedGrantForfeited(grant.expiresUnusedAt, now)) {
+        db.update(unlockGrants).set({ status: 'forfeited' }).where(eq(unlockGrants.id, id)).run();
+        return null;
+      }
+      if (!grantActivatable(grant, now)) return null;
       const expiresAt = now + grant.minutes * 60 * 1000;
       db.update(unlockGrants)
         .set({ status: 'active', activatedAt: now, expiresAt, screenTimeApplied: false })

@@ -1,10 +1,10 @@
-import { useEffect } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { useUnlockClock } from '@/components/unlock/useUnlockClock';
 import { Group, PrimaryButton, ScreenTitle, SectionFooter, SectionHeader } from '@/components/ui/ios';
 import type { UnlockGrantRow } from '@/data/repositories/unlockRepo';
-import { activateGrant, refreshUnlock, useUnlock } from '@/state/unlockStore';
+import { activateGrant, useUnlock } from '@/state/unlockStore';
 
 function remainingLabel(expiresAt: number, now: number): string {
   const seconds = Math.max(0, Math.ceil((expiresAt - now) / 1000));
@@ -36,11 +36,7 @@ export default function UnlockScreen() {
   const unlock = useUnlock();
   const secondary = useThemeColor({}, 'secondaryText');
 
-  useEffect(() => {
-    void refreshUnlock();
-    const timer = setInterval(() => void refreshUnlock(), 1000);
-    return () => clearInterval(timer);
-  }, []);
+  const now = useUnlockClock(unlock.grants);
 
   const visible = unlock.grants.filter((grant) => grant.status !== 'forfeited');
   const status =
@@ -65,7 +61,7 @@ export default function UnlockScreen() {
       ) : (
         <Group>
           {visible.map((grant) => (
-            <Grant key={grant.id} grant={grant} now={unlock.now} />
+            <Grant key={grant.id} grant={grant} now={now} />
           ))}
         </Group>
       )}
