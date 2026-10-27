@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { FeedbackPanel } from '@/components/practice/FeedbackPanel';
+import { useSpeechCapabilities } from '@/components/practice/useSpeechCapabilities';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { GlassCluster } from '@/components/ui/Glass';
 import { Field, PrimaryButton, SecondaryButton, SectionHeader } from '@/components/ui/ios';
@@ -18,6 +19,9 @@ export function SampleLesson() {
   const secondary = useThemeColor({}, 'secondaryText');
   const accent = useThemeColor({}, 'accent');
   const [speech] = useState<SpeechService>(() => createSpeechService());
+  const capabilities = useSpeechCapabilities(speech);
+  const canSpeak = capabilities?.stt === true;
+  const canHear = capabilities?.tts === true;
   const typedRef = useRef('');
   const [typed, setTyped] = useState('');
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
@@ -94,18 +98,22 @@ export function SampleLesson() {
       <Text style={[styles.word, { color: accent }]}>{sample.text}</Text>
       <Text style={styles.meaning}>{sample.meaning}</Text>
       <Text style={styles.example}>{sample.example}</Text>
-      <Text style={[styles.note, { color: secondary }]}>The microphone is simulated until on-device recognition is verified.</Text>
+      <Text style={[styles.note, { color: secondary }]}>
+        {capabilities && !canSpeak
+          ? "Speaking isn't available in this build. Type the phrase instead."
+          : 'The microphone is simulated until on-device recognition is verified.'}
+      </Text>
 
       <GlassCluster style={styles.controls} spacing={16}>
-        <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} />
+        {canHear ? <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} /> : null}
         {played ? <Text style={[styles.note, { color: secondary }]}>Played.</Text> : null}
 
-        <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} />
+        {canSpeak ? <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} /> : null}
         <Field label="Type the phrase" value={typed} onChangeText={onType} returnKeyType="done" onSubmitEditing={() => void checkTyped()} />
         <SecondaryButton label="Check typing" disabled={typed.trim().length === 0} onPress={() => void checkTyped()} />
 
         {feedback ? <FeedbackPanel state={feedback} hint={hint} /> : null}
-        {feedback ? <SecondaryButton label="Try again" disabled={busy} onPress={() => void repeat()} /> : null}
+        {feedback && canSpeak ? <SecondaryButton label="Try again" disabled={busy} onPress={() => void repeat()} /> : null}
 
         <Text style={[styles.note, { color: secondary }]}>
           {saved

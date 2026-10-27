@@ -71,7 +71,7 @@ Data (src/data — Drizzle/SQLite)
 Key rules:
 - **SQLite is the source of truth** for KnowledgeItems, queue state, attempts, feedback, grants, and settings. Zustand stores mirror what the UI needs and rehydrate from repositories on launch. Live lists can use Drizzle's `useLiveQuery` for `expo-sqlite`.
 - **Domain is pure and Jest-tested** with injected time (`now: number`). No `Date.now()` inside domain functions.
-- **Composition root:** `src/services/registry.ts` picks implementations once at startup from `EXPO_PUBLIC_SPEECH_IMPL` (`mock` | `ios` | `cloud`) and `EXPO_PUBLIC_SCREENTIME_IMPL` (`stub` | `ios`). Tests always use `mock` / `stub`.
+- **Composition root:** `src/services/registry.ts` picks implementations once at startup from `EXPO_PUBLIC_SPEECH_IMPL` (`mock` | `ios` | `cloud` | `unavailable`) and `EXPO_PUBLIC_SCREENTIME_IMPL` (`stub` | `ios`). Tests always use `mock` / `stub`. When `EXPO_PUBLIC_SPEECH_IMPL` is unset, development builds (`__DEV__`) and Jest use `mock`, and a release build uses `unavailable` (`stt: false`, `tts: false`), so the UI offers typed answers only and a shipped build can never pass a step with scripted speech.
 - **Writes for one attempt happen in one transaction:** PracticeAttempt, Feedback, ReviewQueueEntry update, ReviewLog row, and the KnowledgeItem status change. Either all are saved or none are.
 
 ## 5. Folder convention
