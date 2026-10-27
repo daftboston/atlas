@@ -10,7 +10,7 @@ import { DEFAULT_COURSE } from '../seed/courses';
 import { loadSeed } from '../seed/loadSeed';
 import { openTestDatabase } from '../testDatabase';
 import { createSettingsRepo } from './settingsRepo';
-import { createSessionRepo, OnboardingClosedError, StepIncompleteError } from './sessionRepo';
+import { createSessionRepo, OnboardingClosedError, SessionNotActiveError, StepIncompleteError } from './sessionRepo';
 
 let mockIdCounter = 0;
 jest.mock('@/lib/id', () => ({ newId: () => `id-${++mockIdCounter}` }));
@@ -538,6 +538,57 @@ describe('session repository', () => {
       expect(() => answer(repo, started.id, step, view.speechLocale, { transcript: 'Hola' })).toThrow(/not active/);
     });
   });
+  describe('stale sessions (learning-loop §5.4, the 2-hour rule)', () => {
+    const LATER = NOW + 2 * 60 * 60 * 1000 + 1;
+
+    function begin(repo: Repo) {
+      const started = repo.start('daily', NOW, ZONE);
+      if (started.kind !== 'started') throw new Error('expected a session');
+      const view = repo.getPractice(started.id, NOW, ZONE);
+      if (!view) throw new Error('expected a session');
+      return { id: started.id, view };
+    }
+
+    it('rejects recordAttempt on a session older than 2 hours and marks it abandoned', () => {
+      const repo = createSessionRepo(db);
+      const { id, view } = begin(repo);
+      const step = view.steps[0]!;
+      const late = { ...answerInput(id, step, view.speechLocale), startedAt: LATER, endedAt: LATER + 1 };
+      expect(() => repo.recordAttempt(late)).toThrow(SessionNotActiveError);
+      expect(db.select().from(practiceSessions).get()).toMatchObject({ status: 'abandoned', endedAt: LATER + 1 });
+      expect(db.select().from(practiceAttempts).all()).toHaveLength(0);
+    });
+
+    it('still accepts an attempt at exactly 2 hours', () => {
+      const repo = createSessionRepo(db);
+      const { id, view } = begin(repo);
+      const edge = NOW + 2 * 60 * 60 * 1000;
+      const input = { ...answerInput(id, view.steps[0]!, view.speechLocale), startedAt: edge, endedAt: edge };
+      expect(repo.recordAttempt(input)).toBe('recorded');
+    });
+
+    it('rejects advance on a session older than 2 hours: no completion, no grant, session abandoned', () => {
+      const repo = createSessionRepo(db);
+      const { id, view } = begin(repo);
+      for (const [index, step] of view.steps.entries()) {
+        answer(repo, id, step, view.speechLocale, { transcript: step.targetText });
+        if (index < view.steps.length - 1) repo.advance(id, NOW, ZONE);
+      }
+      expect(() => repo.advance(id, LATER, ZONE)).toThrow(SessionNotActiveError);
+      expect(db.select().from(practiceSessions).get()).toMatchObject({ status: 'abandoned', endedAt: LATER });
+      expect(db.select().from(unlockGrants).all()).toHaveLength(0);
+      expect(() => repo.advance(id, LATER, ZONE)).toThrow(SessionNotActiveError);
+    });
+
+    it('throws SessionNotActiveError for an abandoned or unknown session', () => {
+      const repo = createSessionRepo(db);
+      const { id, view } = begin(repo);
+      repo.abandon(id, NOW);
+      expect(() => repo.recordAttempt(answerInput(id, view.steps[0]!, view.speechLocale))).toThrow(SessionNotActiveError);
+      expect(() => repo.advance(id, NOW, ZONE)).toThrow(SessionNotActiveError);
+      expect(() => repo.advance('missing', NOW, ZONE)).toThrow(SessionNotActiveError);
+    });
+  });
 });
 
 type Repo = ReturnType<typeof createSessionRepo>;
@@ -596,4 +647,31 @@ function answer(
           })
         : null,
   });
+}
+
+function answerInput(
+  sessionId: string,
+  step: { itemId: string; promptType: PromptType; targetText: string; variants: string[]; reading: string | null; romanization: string | null },
+  locale: string,
+) {
+  return {
+    sessionId,
+    itemId: step.itemId,
+    promptType: step.promptType,
+    inputMode: 'typed' as InputMode,
+    status: 'scored' as const,
+    transcript: step.targetText,
+    error: null,
+    startedAt: NOW,
+    endedAt: NOW + 1,
+    hint: null,
+    score: textMatch({
+      target: step.targetText,
+      variants: step.variants,
+      transcript: step.targetText,
+      locale,
+      reading: step.reading,
+      romanization: step.romanization,
+    }),
+  };
 }

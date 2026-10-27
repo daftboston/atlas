@@ -1,22 +1,23 @@
 import { useRouter } from 'expo-router';
 
 import { OnboardingFrame, PrimaryButton, TextButton } from '@/components/ui/ios';
+import { useSingleTap } from '@/lib/useSingleTap';
 import { createSpeechService } from '@/services/speech/registry';
 import { setMicDenied } from '@/state/settingsStore';
 
 export default function MicScreen() {
   const router = useRouter();
 
-  async function allow() {
+  const allow = useSingleTap(async () => {
     const permission = await createSpeechService().requestPermission();
     setMicDenied(permission !== 'granted');
     router.push('/(onboarding)/first-session');
-  }
+  });
 
-  function skip() {
+  const skip = useSingleTap(() => {
     setMicDenied(true);
     router.push('/(onboarding)/first-session');
-  }
+  });
 
   return (
     <OnboardingFrame

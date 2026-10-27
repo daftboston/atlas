@@ -1,6 +1,7 @@
 import { useRouter } from 'expo-router';
 
 import { OnboardingFrame, PrimaryButton } from '@/components/ui/ios';
+import { useSingleTap } from '@/lib/useSingleTap';
 import { useReviewHome } from '@/state/reviewStore';
 import { completeOnboarding } from '@/state/settingsStore';
 
@@ -9,10 +10,10 @@ export default function DoneScreen() {
   const review = useReviewHome();
   const scheduled = review.ready ? review.home.due.length + review.home.upcoming.length : 0;
 
-  function finish() {
+  const finish = useSingleTap(() => {
     completeOnboarding();
     router.replace('/(tabs)/learn');
-  }
+  });
 
   return (
     <OnboardingFrame

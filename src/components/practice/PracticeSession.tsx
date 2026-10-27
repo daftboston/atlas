@@ -1,6 +1,6 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { AppState, ScrollView, StyleSheet } from 'react-native';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { GlassCluster } from '@/components/ui/Glass';
@@ -8,12 +8,13 @@ import { Field, PrimaryButton, SecondaryButton, TextButton } from '@/components/
 import { MAX_TRIES_PER_STEP } from '@/domain/config';
 import { feedbackFor, hintLine, type FeedbackState, type ListenOutcome } from '@/domain/scoring/feedback';
 import type { TextMatchResult } from '@/domain/scoring/types';
+import { interruptible, SpeechInterruptedError } from '@/services/speech/interruptible';
 import { createSpeechService } from '@/services/speech/registry';
 import type { MockSpeechService } from '@/services/speech/mock';
-import type { SpeechService } from '@/services/speech/types';
+import type { ListenResult, SpeechService } from '@/services/speech/types';
 import { getDevScript, scriptedStep } from '@/state/devSpeechScript';
 import { abandonSession, advanceSession, openPractice, readPractice, refreshSessionHome, saveAttempt } from '@/state/sessionStore';
-import type { PracticeView, StepView } from '@/data/repositories/sessionRepo';
+import { SessionNotActiveError, type PracticeView, type StepView } from '@/data/repositories/sessionRepo';
 
 import { FeedbackPanel } from './FeedbackPanel';
 import { useSpeechCapabilities } from './useSpeechCapabilities';
@@ -29,6 +30,8 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   const [busy, setBusy] = useState(false);
   // One attempt-writing action at a time. The ref blocks a second tap in the same tick, before `busy` renders.
   const inFlight = useRef(false);
+  // Stops the speak or listen call that is running, if any (timeout, unmount, app in background).
+  const interruptSpeech = useRef<(() => void) | null>(null);
   const advancedFrom = useRef<number | null>(null);
   const [typed, setTyped] = useState('');
   const typedRef = useRef('');
@@ -42,6 +45,16 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     refreshSessionHome();
   }, [sessionId]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background') interruptSpeech.current?.();
+    });
+    return () => {
+      subscription.remove();
+      interruptSpeech.current?.();
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
@@ -124,12 +137,24 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
     reload();
   }
 
+  /** The session ended under the learner (abandoned, finished, or past 2 hours). Show its saved state. */
+  function sessionEnded() {
+    setFeedback(null);
+    setConfirmLeave(false);
+    allowLeave.current = true;
+    reload();
+    refreshSessionHome();
+  }
+
   async function guarded(run: () => Promise<void> | void) {
     if (inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     try {
       await run();
+    } catch (error) {
+      if (error instanceof SessionNotActiveError) sessionEnded();
+      else if (!(error instanceof SpeechInterruptedError)) throw error;
     } finally {
       inFlight.current = false;
       setBusy(false);
@@ -139,18 +164,37 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   function hear() {
     return guarded(async () => {
       setPlayed(false);
-      await speech.speak(step.targetText, { locale });
-      setPlayed(true);
+      const run = interruptible(speech.speak(step.targetText, { locale }), () => {
+        void Promise.resolve()
+          .then(() => speech.stopSpeaking())
+          .catch(() => {});
+      });
+      interruptSpeech.current = run.interrupt;
+      try {
+        await run.promise;
+        setPlayed(true);
+      } finally {
+        interruptSpeech.current = null;
+      }
     });
   }
 
   function repeat() {
     if (!canSpeak) return Promise.resolve();
     return guarded(async () => {
+      let outcome: ListenResult;
+      let score: TextMatchResult | null;
       try {
         if (isMockSpeech(speech)) speech.enqueue(scriptedStep(getDevScript(), step.targetText));
-        const outcome = await speech.listen({ locale }).result;
-        const score = outcome.transcript
+        const listening = speech.listen({ locale });
+        const run = interruptible(listening.result, () => listening.cancel());
+        interruptSpeech.current = run.interrupt;
+        try {
+          outcome = await run.promise;
+        } finally {
+          interruptSpeech.current = null;
+        }
+        score = outcome.transcript
           ? await speech.score({
               target: step.targetText,
               variants: step.variants,
@@ -162,10 +206,12 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
               audioUri: null,
             })
           : null;
-        persist(step, outcome, score, 'speech');
-      } catch {
-        // A newer listen cancelled this one.
+      } catch (error) {
+        // Timeout and interrupts go to `guarded`. Anything else is a newer listen cancelling this one.
+        if (error instanceof SpeechInterruptedError) throw error;
+        return;
       }
+      persist(step, outcome, score, 'speech');
     });
   }
 
@@ -216,7 +262,14 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
     const cursor = view?.session.cursor ?? -1;
     if (advancedFrom.current === cursor) return;
     advancedFrom.current = cursor;
-    const status = advanceSession(sessionId);
+    let status: ReturnType<typeof advanceSession>;
+    try {
+      status = advanceSession(sessionId);
+    } catch (error) {
+      if (!(error instanceof SessionNotActiveError)) throw error;
+      sessionEnded();
+      return;
+    }
     if (status === 'completed') {
       allowLeave.current = true;
       router.replace({ pathname: '/practice/summary/[sessionId]', params: { sessionId } });

@@ -3,20 +3,21 @@ import { useState } from 'react';
 
 import { Text } from '@/components/Themed';
 import { OnboardingFrame, PrimaryButton } from '@/components/ui/ios';
+import { useSingleTap } from '@/lib/useSingleTap';
 import { startOnboardingSession } from '@/state/sessionStore';
 
 export default function FirstSessionScreen() {
   const router = useRouter();
   const [empty, setEmpty] = useState(false);
 
-  function start() {
+  const start = useSingleTap(() => {
     const result = startOnboardingSession();
     if (result.kind === 'caught-up') {
       setEmpty(true);
       return;
     }
     router.push({ pathname: '/practice/[sessionId]', params: { sessionId: result.id } });
-  }
+  });
 
   return (
     <OnboardingFrame

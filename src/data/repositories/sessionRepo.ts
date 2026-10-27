@@ -77,6 +77,14 @@ export class StepIncompleteError extends Error {
   }
 }
 
+/** The session is not active (abandoned, finished, unknown, or older than 2 hours). Callers reload and show its state. */
+export class SessionNotActiveError extends Error {
+  constructor(sessionId: string) {
+    super(`Session ${sessionId} is not active`);
+    this.name = 'SessionNotActiveError';
+  }
+}
+
 /** `start('onboarding')` after onboarding is completed, or when a completed onboarding session already exists. */
 export class OnboardingClosedError extends Error {
   constructor() {
@@ -131,6 +139,23 @@ export function createSessionRepo(db: AtlasDatabase) {
       .from(practiceSessions)
       .where(and(eq(practiceSessions.mode, 'onboarding'), eq(practiceSessions.status, 'completed')))
       .get();
+  }
+
+  /**
+   * Learning-loop §5.4 (the 2-hour rule): an active session past SESSION_STALE_MS is marked abandoned, so it earns
+   * nothing, and the caller gets SessionNotActiveError. Kept outside any transaction so the abandon is not rolled back.
+   */
+  function requireActive(sessionId: string, now: number) {
+    const session = sessionRow(sessionId);
+    if (!session || session.status !== 'active') throw new SessionNotActiveError(sessionId);
+    if (isSessionStale(session.startedAt, now)) {
+      db.update(practiceSessions)
+        .set({ status: 'abandoned', endedAt: now })
+        .where(and(eq(practiceSessions.id, sessionId), eq(practiceSessions.status, 'active')))
+        .run();
+      throw new SessionNotActiveError(sessionId);
+    }
+    return session;
   }
 
   function courseItems(courseId: string) {
@@ -289,10 +314,12 @@ export function createSessionRepo(db: AtlasDatabase) {
      * writing feedback leaves no attempt and no card.
      */
     recordAttempt(input: RecordAttemptInput): RecordResult {
+      // The attempt's own end time is the clock, so a session left open for 2 hours cannot be finished late.
+      requireActive(input.sessionId, input.endedAt);
       const retention = createSettingsRepo(db).get('desiredRetention') ?? DEFAULT_DESIRED_RETENTION;
       return db.transaction((tx): RecordResult => {
         const owner = tx.select().from(practiceSessions).where(eq(practiceSessions.id, input.sessionId)).get();
-        if (!owner || owner.status !== 'active') throw new Error(`Session ${input.sessionId} is not active`);
+        if (!owner || owner.status !== 'active') throw new SessionNotActiveError(input.sessionId);
         const prior = tx
           .select({ status: practiceAttempts.status })
           .from(practiceAttempts)
@@ -431,8 +458,7 @@ export function createSessionRepo(db: AtlasDatabase) {
     },
 
     advance(sessionId: string, now: number, timeZone = deviceTimeZone()): 'active' | 'completed' {
-      const session = sessionRow(sessionId);
-      if (!session || session.status !== 'active') throw new Error(`Session ${sessionId} is not active`);
+      const session = requireActive(sessionId, now);
       const current = sessionSteps(session.plannedItemIds, session.plannedSteps)[session.cursor];
       if (!current || !stepComplete(db, sessionId, current)) throw new StepIncompleteError(sessionId);
       const next = session.cursor + 1;
