@@ -57,7 +57,11 @@ export async function refreshUnlock(now = Date.now()) {
 export async function activateGrant(id: string, now = Date.now()) {
   if (!repository) return;
   const grant = repository.activate(id, now);
-  if (!grant || grant.expiresAt === null) return;
+  if (!grant || grant.expiresAt === null) {
+    // Rejected (already used, or past its rollover): show the grant's real status.
+    await refreshUnlock(now);
+    return;
+  }
   try {
     await getScreenTimeService().liftShield(grant.expiresAt);
     repository.markApplied(id);
