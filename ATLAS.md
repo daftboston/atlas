@@ -36,20 +36,39 @@ After Spanish: **Japanese (ja-JP), Korean (ko-KR), French (fr-FR)**, in no fixed
 
 ## Current build state
 
-This is what's on `main` today (PR #1 foundation + PR #2 first lesson + the `src/` layout move + on-device persistence):
+This is what's on `main` today (foundation, `src/` layout, on-device persistence, then scoring, mock speech, daily sessions, FSRS, the unlock timer, onboarding, settings and the harbor/glass theme):
 
-- Foundation: bundle ID `daft.atlas`, EAS config, dev client, ESLint, TypeScript typecheck, Jest + Testing Library, `expo-build-properties` with iOS scene support enabled.
-- Layout: app code lives under `src/` and the `@/*` alias points to `./src/*` ([architecture §5.1](docs/architecture.md#51-migrating-from-the-template-layout)). Routes stay in `app/` at the repo root. The folder map is in [`AGENTS.md`](AGENTS.md#folder-layout).
-- Routes: every route in [architecture §3](docs/architecture.md#3-route-map-expo-router-root-app) exists. Tabs are **Learn**, **Review**, **Unlock**, **Settings**. The `(onboarding)` stack, **Unlock**, `practice/[sessionId]` and `practice/summary/[sessionId]` are placeholders that say they're not built yet, and the onboarding gate isn't wired up.
-- Learn shows the single course ("You speak English, you're learning Spanish") with a Continue button, then one **sample lesson**: seed item `es-v0-001`, "Hola" ("Hello"), from the seed deck. Saving it marks it *ready to review* (not mastered), and the **Review** tab lists it.
-- **Persistence:** the chosen course and saved words are stored on the device with `expo-sqlite` + Drizzle and survive restarts. Tables so far: `courses`, `knowledge_items`, `app_settings` ([learning-loop §3](docs/learning-loop.md#3-entities-sqlite-tables-drizzle)), plus `saved_words`, which keeps the saved-word fields §3 has no column for. On every launch the app applies migrations and seeds the v0 course and all 60 seed phrases idempotently.
-- **What it doesn't do yet:** there is only the sample lesson, with no real lesson list (the 60 seed phrases are in the database but nothing shows them yet). There is **no audio** (no TTS, no mic), **no scoring**, **no review queue**, and **no app lock / unlock**.
+- **Foundation:** bundle ID `daft.atlas`, EAS config, dev client, ESLint, TypeScript typecheck, Jest + Testing Library, `expo-build-properties` with iOS scene support enabled (Xcode 27 needs it). No CI yet.
+- **Layout:** app code lives under `src/`, the `@/*` alias points to `./src/*`, and routes stay in `app/` ([architecture §5.1](docs/architecture.md#51-migrating-from-the-template-layout)). The folder map is in [`AGENTS.md`](AGENTS.md#folder-layout).
+- **Routes:** every route in [architecture §3](docs/architecture.md#3-route-map-expo-router-root-app) exists. Tabs are **Learn**, **Review**, **Unlock**, **Settings**, plus the `(onboarding)` stack and the `practice/[sessionId]` and `practice/summary/[sessionId]` screens.
+- **Onboarding:** welcome, language/accent (es-MX default, es-ES selectable), mic explanation, habit, a 3-item first session, done. The root layout gates the app on `onboardingCompleted`.
+- **Daily session:** built from the 60-phrase seed deck (`content/seed/seed-phrases-v0.json`, loaded idempotently into SQLite on launch). The session builder mixes due reviews with up to 5 new items a day and caps the session size ([learning-loop §5](docs/learning-loop.md)).
+- **Practice loop:** hear the phrase (TTS), repeat it, or type it. The answer is scored by the language-agnostic text-match scorer (`src/domain/scoring/textMatch.ts`, driven by a `LanguageProfile`; Spanish is lenient with accents and gives a spelling hint) against the target and all accepted variants. Feedback shows a word diff.
+- **Mock speech:** `src/services/speech/mock.ts` is the default speech service on the Simulator and in Jest. The `ios` implementation is a placeholder with all capabilities `false` until OQ-8 (real on-device es-MX/es-ES recognition) is settled on a physical iPhone. There is no real microphone path yet.
+- **Review scheduling:** FSRS through `ts-fsrs` (`src/domain/scheduler/`), with score-to-rating grading, a Review tab that lists due and upcoming items, and Long-Term Memory promotion/suspend rules.
+- **Unlock timer:** finishing a session can earn a temporary unlock (10 min base, +5 for a strong session, 20 per grant, 60 per day). The Unlock tab shows it as a visible timer. Screen Time stays behind `src/services/screenTime/stub.ts` (`unavailable`); no entitlement, no native target.
+- **Settings:** daily new-item limit, session size, desired retention, accent, and the other practice settings.
+- **Theme:** the harbor palette and liquid-glass surfaces (`expo-glass-effect`, `expo-symbols`) in `src/components/ui/` and `src/constants/Colors.ts`.
+- **State:** hand-rolled `useSyncExternalStore` stores in `src/state/` mirror SQLite. **Zustand and NativeWind are not adopted in v0**; styling is plain React Native `StyleSheet` ([architecture §4](docs/architecture.md#4-layers)).
+- **Persistence:** `expo-sqlite` + Drizzle, repositories in `src/data/repositories/`, migrations committed under `src/data/migrations/`.
+- **Checks:** lint, typecheck, Jest (133+ tests) and `expo-doctor` (21/21) pass on `main`.
+
+### Known open bugs
+
+These were found in the repo review and are being fixed in the open PRs, so don't work around them elsewhere:
+
+- [`fix/unlock-integrity`](https://github.com/daftboston/atlas/pull/13): unlock eligibility counted wrong answers and silence (it must count graded first attempts only); "Next" worked without a real answer (it needs a graded answer or an explicit Skip); double-tapping Check saved the answer twice; the mock speech service was the default in release builds (release builds must not use it).
+- Database bootstrap and the Unlock screen (separate PR): a failed database open crashes the app instead of showing an error screen, and the Unlock timer re-renders every second even when no grant is active.
+- Scoring: extra words are ignored, so "hola buenos días a todos" scores 100 against "Hola". It needs a penalty for unmatched extra words (a later PR).
 
 ## Next work, in order
 
-1. **Listening & speaking.** TTS playback and mic capture through the speech service contract ([architecture §6](docs/architecture.md#6-speech-service-contract)), with on-device STT and text-match scoring, and the mock implementation for the simulator and tests.
-2. **Real lesson list** built from [`content/seed/seed-phrases-v0.json`](content/seed/seed-phrases-v0.json), already loaded idempotently into SQLite ([learning-loop §11](docs/learning-loop.md#11-seed-content-schema-contentseedseed-phrases-v0json)).
-3. **Review & unlock.** FSRS review queue, session rules, and unlock grants ([learning-loop §4–8](docs/learning-loop.md#4-scheduling-algorithm-fsrs-recommended-over-sm-2)), with the Screen Time **stub** only ([architecture §7](docs/architecture.md#7-screen-time-service-contract-stub-able)).
+1. **Unlock integrity** (`fix/unlock-integrity`, open): the four unlock bugs above, with tests.
+2. **Reliability:** safe database startup with an error screen, and a battery-friendly Unlock timer (tick only while a grant is active).
+3. **Scoring and spec alignment:** penalize extra words, then re-check the scorer and the docs against [learning-loop](docs/learning-loop.md).
+4. **Real speech, device only.** The Simulator can't be relied on for Spanish speech recognition (Apple's own speech samples say it doesn't run there; tracked as OQ-8 in [learning-loop §10](docs/learning-loop.md#10-open-questions-and-decisions)). Keep `mock` as the Simulator/Jest default; when an iPhone is available, wire the `ios` service (`expo-speech` for TTS, `expo-speech-recognition` for STT). Both are new dependencies and need lead approval first.
+5. **CI:** GitHub Actions running lint, typecheck, test and `expo-doctor` (needs a one-time repo permission from Daniel).
+6. **Later:** Screen Time (needs a physical iPhone and a paid Apple Developer account), then the roadmap languages.
 
 ## Workflow rules
 
