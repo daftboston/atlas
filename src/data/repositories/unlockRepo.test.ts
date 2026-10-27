@@ -54,4 +54,26 @@ describe('unlock repository', () => {
     expect(expired.map((grant) => grant.id)).toEqual(['grant-1']);
     expect(db.select().from(unlockGrants).where(eq(unlockGrants.id, 'grant-1')).get()?.status).toBe('expired');
   });
+
+  it('activates only once', () => {
+    const repo = createUnlockRepo(db);
+    expect(repo.activate('grant-1', NOW)).toMatchObject({ status: 'active', activatedAt: NOW });
+    expect(repo.activate('grant-1', NOW + 1000)).toBeNull();
+    expect(db.select().from(unlockGrants).get()).toMatchObject({ status: 'active', activatedAt: NOW, expiresAt: NOW + 10 * 60 * 1000 });
+  });
+
+  it('does not activate a grant at or after its rollover, even before reconcile has run', () => {
+    const repo = createUnlockRepo(db);
+    expect(repo.activate('grant-1', NOW + 60_000)).toBeNull();
+    expect(repo.activate('grant-1', NOW + 120_000)).toBeNull();
+    expect(db.select().from(unlockGrants).get()).toMatchObject({ status: 'earned', activatedAt: null, expiresAt: null });
+  });
+
+  it('does not activate forfeited, expired or unknown grants', () => {
+    const repo = createUnlockRepo(db);
+    repo.reconcile(NOW + 60_000);
+    expect(repo.activate('grant-1', NOW + 60_001)).toBeNull();
+    expect(repo.activate('missing', NOW)).toBeNull();
+    expect(db.select().from(unlockGrants).get()?.status).toBe('forfeited');
+  });
 });

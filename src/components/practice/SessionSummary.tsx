@@ -1,17 +1,19 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { ScrollView, StyleSheet } from 'react-native';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
-import { PrimaryButton } from '@/components/ui/ios';
+import { PrimaryButton, SecondaryButton } from '@/components/ui/ios';
 import type { PracticeView } from '@/data/repositories/sessionRepo';
 import { RATING_HARD_BELOW } from '@/domain/config';
+import { useSingleTap } from '@/lib/useSingleTap';
 import { openPractice, refreshSessionHome } from '@/state/sessionStore';
 
 export function SessionSummary({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const secondary = useThemeColor({}, 'secondaryText');
   const [view] = useState<PracticeView | null>(() => openPractice(sessionId));
+  const finish = useSingleTap(() => router.replace(view?.session.mode === 'onboarding' ? '/(onboarding)/habit' : '/(tabs)/learn'));
 
   useEffect(() => {
     refreshSessionHome();
@@ -24,6 +26,7 @@ export function SessionSummary({ sessionId }: { sessionId: string }) {
           Summary
         </Text>
         <Text style={styles.copy}>This session isn&apos;t on this device.</Text>
+        <SecondaryButton label="Back to Learn" onPress={() => router.replace('/(tabs)/learn')} />
       </View>
     );
   }
@@ -33,7 +36,7 @@ export function SessionSummary({ sessionId }: { sessionId: string }) {
   const doneLabel = view.session.mode === 'onboarding' ? 'Continue' : 'Done';
 
   return (
-    <View style={styles.screen}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.screen}>
       <Text style={styles.title} accessibilityRole="header">
         Summary
       </Text>
@@ -47,11 +50,8 @@ export function SessionSummary({ sessionId }: { sessionId: string }) {
       </Text>
       {abandoned ? <Text style={styles.copy}>This session was abandoned. The answers you gave stay saved.</Text> : null}
       <Text style={[styles.note, { color: secondary }]}>{unlockCopy(view)}</Text>
-      <PrimaryButton
-        label={doneLabel}
-        onPress={() => router.replace(view.session.mode === 'onboarding' ? '/(onboarding)/habit' : '/(tabs)/learn')}
-      />
-    </View>
+      <PrimaryButton label={doneLabel} onPress={finish} />
+    </ScrollView>
   );
 }
 
@@ -64,6 +64,9 @@ function unlockCopy(view: PracticeView): string {
 }
 
 const styles = StyleSheet.create({
+  scroll: {
+    flex: 1,
+  },
   screen: {
     flex: 1,
     padding: 24,

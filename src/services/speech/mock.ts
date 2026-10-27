@@ -1,3 +1,4 @@
+import { V0_SPEECH_LOCALES } from '@/content/sample-lesson';
 import { textMatch } from '@/domain/scoring/textMatch';
 import type { SpeechError } from '@/domain/scoring/types';
 
@@ -34,6 +35,12 @@ export type MockSpeechService = SpeechService & {
 };
 
 /**
+ * Locales the mock reports: the v0 course's speech locales, which its language profile can score.
+ * It does not claim any locale the scorer can't serve.
+ */
+export const MOCK_SPEECH_LOCALES: readonly string[] = V0_SPEECH_LOCALES;
+
+/**
  * Deterministic speech (architecture §6). Steps are consumed in order.
  * An empty queue is silence. This is the simulator path until OQ-8 is verified.
  */
@@ -55,7 +62,7 @@ export function createMockSpeechService(): MockSpeechService {
 
   return {
     async capabilities() {
-      return { stt: true, tts: true, scoring: 'text-match', onDevice: false, locales: [] };
+      return { stt: true, tts: true, scoring: 'text-match', onDevice: false, locales: [...MOCK_SPEECH_LOCALES] };
     },
     async getPermission() {
       return permission;

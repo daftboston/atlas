@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Group, OnboardingFrame, PrimaryButton, ChoiceRow } from '@/components/ui/ios';
 import { V0_COURSE } from '@/content/sample-lesson';
 import { SPANISH_ACCENTS } from '@/domain/language/profiles/es';
+import { useSingleTap } from '@/lib/useSingleTap';
 import { chooseAccent } from '@/state/accent';
 import { startCourse } from '@/state/learnerStore';
 
@@ -11,11 +12,11 @@ export default function LanguageScreen() {
   const router = useRouter();
   const [selected, setSelected] = useState<string>(SPANISH_ACCENTS[0].locale);
 
-  function next() {
+  const next = useSingleTap(() => {
     chooseAccent(selected);
     void startCourse(V0_COURSE.courseId);
     router.push('/(onboarding)/mic');
-  }
+  });
 
   return (
     <OnboardingFrame

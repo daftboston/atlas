@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react';
 
+import { OnboardingClosedError } from '@/data/repositories/sessionRepo';
 import type { PracticeView, RecordAttemptInput, SessionHome, SessionRepository, StartResult } from '@/data/repositories/sessionRepo';
 import { deviceTimeZone } from '@/lib/time';
 
@@ -65,9 +66,15 @@ export function startReviewSession(now = Date.now()): StartResult {
 }
 
 export function startOnboardingSession(now = Date.now()): StartResult {
-  const result = repo().start('onboarding', now, deviceTimeZone());
-  refresh(now);
-  return result;
+  try {
+    const result = repo().start('onboarding', now, deviceTimeZone());
+    refresh(now);
+    return result;
+  } catch (error) {
+    // Onboarding is already done: show the "nothing new" state instead of crashing the screen.
+    if (error instanceof OnboardingClosedError) return { kind: 'caught-up' };
+    throw error;
+  }
 }
 
 /** Read a session without publishing. Safe to call while drawing a screen. */

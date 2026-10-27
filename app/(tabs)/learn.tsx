@@ -2,6 +2,7 @@ import { Linking, ScrollView, StyleSheet } from 'react-native';
 
 import { LanguageSetup } from '@/components/LanguageSetup';
 import { SampleLesson } from '@/components/SampleLesson';
+import { useSpeechMode } from '@/components/practice/useSpeechCapabilities';
 import { SessionHome } from '@/components/practice/SessionHome';
 import { Text, View } from '@/components/Themed';
 import { Group, ScreenTitle, TextButton } from '@/components/ui/ios';
@@ -11,11 +12,13 @@ import { useSettings } from '@/state/settingsStore';
 export default function LearnScreen() {
   const { profile } = useLearner();
   const settings = useSettings();
+  const mode = useSpeechMode();
   if (!profile) return <LanguageSetup />;
   return (
     <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" automaticallyAdjustKeyboardInsets contentInsetAdjustmentBehavior="automatic">
       <ScreenTitle>Learn</ScreenTitle>
-      {settings.micDenied ? (
+      {/* Without a speech engine there is nothing to turn on, so the banner would be a dead end. */}
+      {settings.micDenied && (mode === 'simulated' || mode === 'device') ? (
         <Group>
           <View style={styles.banner}>
             <Text style={styles.copy}>The microphone is off, so you can type your answers.</Text>

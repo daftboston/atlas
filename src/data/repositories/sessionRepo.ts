@@ -1,6 +1,6 @@
 import { and, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
 
-import { DAILY_NEW_LIMIT, DEFAULT_DESIRED_RETENTION, ONBOARDING_ITEM_COUNT, SESSION_SIZE } from '@/domain/config';
+import { DAILY_NEW_LIMIT, DEFAULT_DESIRED_RETENTION, MAX_TRIES_PER_STEP, ONBOARDING_ITEM_COUNT, SESSION_SIZE } from '@/domain/config';
 import { decideUnlock, type UnlockDecision } from '@/domain/unlock/unlockRules';
 import { itemStatusAfterGrade } from '@/domain/memory/promotion';
 import { gradeAttempt } from '@/domain/scheduler/grading';
@@ -66,6 +66,33 @@ export type RecordAttemptInput = {
   hint: string | null;
 };
 
+/** `ignored` means the step was already answered to its limit or skipped, so nothing was written. */
+export type RecordResult = 'recorded' | 'ignored';
+
+/** `advance()` was called on a step with no graded attempt and no skip (learning-loop §5.4). */
+export class StepIncompleteError extends Error {
+  constructor(sessionId: string) {
+    super(`Session ${sessionId}: the current step needs a graded answer or a skip before it can advance`);
+    this.name = 'StepIncompleteError';
+  }
+}
+
+/** The session is not active (abandoned, finished, unknown, or older than 2 hours). Callers reload and show its state. */
+export class SessionNotActiveError extends Error {
+  constructor(sessionId: string) {
+    super(`Session ${sessionId} is not active`);
+    this.name = 'SessionNotActiveError';
+  }
+}
+
+/** `start('onboarding')` after onboarding is completed, or when a completed onboarding session already exists. */
+export class OnboardingClosedError extends Error {
+  constructor() {
+    super('Onboarding has already been completed');
+    this.name = 'OnboardingClosedError';
+  }
+}
+
 export type SessionRepository = ReturnType<typeof createSessionRepo>;
 
 type AttemptRow = typeof practiceAttempts.$inferSelect;
@@ -104,6 +131,31 @@ export function createSessionRepo(db: AtlasDatabase) {
 
   function activeSession(): PracticeSession | null {
     return db.select().from(practiceSessions).where(eq(practiceSessions.status, 'active')).get() ?? null;
+  }
+
+  function onboardingFinished(): boolean {
+    return !!db
+      .select({ id: practiceSessions.id })
+      .from(practiceSessions)
+      .where(and(eq(practiceSessions.mode, 'onboarding'), eq(practiceSessions.status, 'completed')))
+      .get();
+  }
+
+  /**
+   * Learning-loop §5.4 (the 2-hour rule): an active session past SESSION_STALE_MS is marked abandoned, so it earns
+   * nothing, and the caller gets SessionNotActiveError. Kept outside any transaction so the abandon is not rolled back.
+   */
+  function requireActive(sessionId: string, now: number) {
+    const session = sessionRow(sessionId);
+    if (!session || session.status !== 'active') throw new SessionNotActiveError(sessionId);
+    if (isSessionStale(session.startedAt, now)) {
+      db.update(practiceSessions)
+        .set({ status: 'abandoned', endedAt: now })
+        .where(and(eq(practiceSessions.id, sessionId), eq(practiceSessions.status, 'active')))
+        .run();
+      throw new SessionNotActiveError(sessionId);
+    }
+    return session;
   }
 
   function courseItems(courseId: string) {
@@ -162,6 +214,9 @@ export function createSessionRepo(db: AtlasDatabase) {
     },
 
     start(mode: SessionMode, now: number, timeZone: string): StartResult {
+      if (mode === 'onboarding' && (createSettingsRepo(db).get('onboardingCompleted') === true || onboardingFinished())) {
+        throw new OnboardingClosedError();
+      }
       this.abandonStale(now);
       const active = activeSession();
       if (active) return { kind: 'resumed', id: active.id };
@@ -258,9 +313,13 @@ export function createSessionRepo(db: AtlasDatabase) {
      * Attempt, feedback, and a try-1 grade commit together. A failure while
      * writing feedback leaves no attempt and no card.
      */
-    recordAttempt(input: RecordAttemptInput) {
+    recordAttempt(input: RecordAttemptInput): RecordResult {
+      // The attempt's own end time is the clock, so a session left open for 2 hours cannot be finished late.
+      requireActive(input.sessionId, input.endedAt);
       const retention = createSettingsRepo(db).get('desiredRetention') ?? DEFAULT_DESIRED_RETENTION;
-      db.transaction((tx) => {
+      return db.transaction((tx): RecordResult => {
+        const owner = tx.select().from(practiceSessions).where(eq(practiceSessions.id, input.sessionId)).get();
+        if (!owner || owner.status !== 'active') throw new SessionNotActiveError(input.sessionId);
         const prior = tx
           .select({ status: practiceAttempts.status })
           .from(practiceAttempts)
@@ -273,6 +332,10 @@ export function createSessionRepo(db: AtlasDatabase) {
           )
           .all();
         const nonFailed = prior.filter((row) => row.status !== 'failed').length;
+        // Idempotent against a repeated tap: a skipped step or a step at its try limit takes no more attempts.
+        if (input.status !== 'failed' && (prior.some((row) => row.status === 'skipped') || nonFailed >= MAX_TRIES_PER_STEP)) {
+          return 'ignored';
+        }
         const tryNumber = input.status === 'failed' ? 0 : nonFailed + 1;
         const attemptId = newId();
         tx.insert(practiceAttempts)
@@ -373,7 +436,7 @@ export function createSessionRepo(db: AtlasDatabase) {
             .run();
           tx.update(practiceAttempts).set({ graded: true }).where(eq(practiceAttempts.id, attemptId)).run();
         }
-        if (!input.score) return;
+        if (!input.score) return 'recorded';
         tx.insert(feedback)
           .values({
             id: newId(),
@@ -390,12 +453,14 @@ export function createSessionRepo(db: AtlasDatabase) {
             createdAt: input.endedAt,
           })
           .run();
+        return 'recorded';
       });
     },
 
     advance(sessionId: string, now: number, timeZone = deviceTimeZone()): 'active' | 'completed' {
-      const session = sessionRow(sessionId);
-      if (!session || session.status !== 'active') throw new Error(`Session ${sessionId} is not active`);
+      const session = requireActive(sessionId, now);
+      const current = sessionSteps(session.plannedItemIds, session.plannedSteps)[session.cursor];
+      if (!current || !stepComplete(db, sessionId, current)) throw new StepIncompleteError(sessionId);
       const next = session.cursor + 1;
       const done = next >= sessionSteps(session.plannedItemIds, session.plannedSteps).length;
       if (!done) {
@@ -457,17 +522,47 @@ function unlockFor(
   });
 }
 
+/**
+ * learning-loop §5.4: a step is complete once it has a graded attempt or an explicit skip.
+ * A failed attempt (denied, interrupted, engine error) is never graded, so it can't complete a step.
+ */
+function stepComplete(db: AtlasDatabase, sessionId: string, step: SessionStep): boolean {
+  const rows = db
+    .select({ status: practiceAttempts.status, graded: practiceAttempts.graded })
+    .from(practiceAttempts)
+    .where(
+      and(
+        eq(practiceAttempts.sessionId, sessionId),
+        eq(practiceAttempts.itemId, step.itemId),
+        eq(practiceAttempts.promptType, step.promptType),
+      ),
+    )
+    .all();
+  return rows.some((row) => row.graded || row.status === 'skipped');
+}
+
+/**
+ * learning-loop §8.1: only a graded try-1 attempt with a real score counts toward unlock eligibility
+ * and the average. Retries, silence (captured), skips, and technical failures (denied, interrupted,
+ * engine error) never count. Speech and typed answers count alike.
+ */
 function gradedStats(db: AtlasDatabase, sessionId: string) {
   const rows = db
-    .select({ status: practiceAttempts.status, overall: feedback.overall })
+    .select({ overall: feedback.overall })
     .from(practiceAttempts)
-    .leftJoin(feedback, eq(feedback.attemptId, practiceAttempts.id))
-    .where(eq(practiceAttempts.sessionId, sessionId))
+    .innerJoin(feedback, eq(feedback.attemptId, practiceAttempts.id))
+    .where(
+      and(
+        eq(practiceAttempts.sessionId, sessionId),
+        eq(practiceAttempts.status, 'scored'),
+        eq(practiceAttempts.graded, true),
+        eq(practiceAttempts.tryNumber, 1),
+      ),
+    )
     .all();
-  const counting = rows.filter((row) => row.status === 'scored' || row.status === 'captured');
   return {
-    gradedCount: counting.length,
-    overalls: counting.flatMap((row) => (typeof row.overall === 'number' ? [row.overall] : [])),
+    gradedCount: rows.length,
+    overalls: rows.map((row) => row.overall),
   };
 }
 

@@ -1,22 +1,24 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { AppState, ScrollView, StyleSheet } from 'react-native';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { useAnnounce } from '@/components/useAnnounce';
 import { GlassCluster } from '@/components/ui/Glass';
 import { Field, PrimaryButton, SecondaryButton, TextButton } from '@/components/ui/ios';
+import { MAX_TRIES_PER_STEP } from '@/domain/config';
 import { feedbackFor, hintLine, type FeedbackState, type ListenOutcome } from '@/domain/scoring/feedback';
 import type { TextMatchResult } from '@/domain/scoring/types';
+import { interruptible, SpeechInterruptedError } from '@/services/speech/interruptible';
 import { createSpeechService } from '@/services/speech/registry';
 import type { MockSpeechService } from '@/services/speech/mock';
-import type { SpeechService } from '@/services/speech/types';
+import type { ListenResult, SpeechService } from '@/services/speech/types';
 import { getDevScript, scriptedStep } from '@/state/devSpeechScript';
 import { abandonSession, advanceSession, openPractice, readPractice, refreshSessionHome, saveAttempt } from '@/state/sessionStore';
-import type { PracticeView, StepView } from '@/data/repositories/sessionRepo';
+import { SessionNotActiveError, type PracticeView, type StepView } from '@/data/repositories/sessionRepo';
 
-import { FeedbackPanel } from './FeedbackPanel';
-
-const MAX_TRIES = 3;
+import { FeedbackPanel, Notice } from './FeedbackPanel';
+import { useSpeechCapabilities } from './useSpeechCapabilities';
 
 export function PracticeSession({ sessionId }: { sessionId: string }) {
   const router = useRouter();
@@ -25,7 +27,18 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   const [view, setView] = useState<PracticeView | null>(() => openPractice(sessionId));
   const [feedback, setFeedback] = useState<FeedbackState | null>(null);
   const [played, setPlayed] = useState(false);
+  // What the speech engine is doing now, so the learner sees it (and VoiceOver hears it) instead of only a dimmed button.
+  const [activity, setActivity] = useState<'speaking' | 'listening' | null>(null);
+  // A stalled engine timed out. The learner gets a message and a next step, never silence.
+  const [notice, setNotice] = useState<string | null>(null);
+  const capabilities = useSpeechCapabilities(speech);
   const [busy, setBusy] = useState(false);
+  // One attempt-writing action at a time. The ref blocks a second tap in the same tick, before `busy` renders.
+  const inFlight = useRef(false);
+  // Stops the speak or listen call that is running, if any (timeout, unmount, app in background).
+  const interruptSpeech = useRef<(() => void) | null>(null);
+  const lastActivity = useRef<'speaking' | 'listening'>('speaking');
+  const advancedFrom = useRef<number | null>(null);
   const [typed, setTyped] = useState('');
   const typedRef = useRef('');
   const [confirmLeave, setConfirmLeave] = useState(false);
@@ -34,10 +47,23 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   const accent = useThemeColor({}, 'accent');
 
   const active = view?.session.status === 'active';
+  const activityText = activity === 'listening' ? 'Listening. Say the phrase now.' : activity === 'speaking' ? 'Playing the phrase.' : null;
+  useAnnounce(activityText);
+  const backToLearn = () => (router.canGoBack() ? router.back() : router.replace('/(tabs)/learn'));
 
   useEffect(() => {
     refreshSessionHome();
   }, [sessionId]);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'background') interruptSpeech.current?.();
+    });
+    return () => {
+      subscription.remove();
+      interruptSpeech.current?.();
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = navigation.addListener('beforeRemove', (event) => {
@@ -55,6 +81,7 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
           Practice
         </Text>
         <Text style={styles.copy}>This session isn&apos;t on this device.</Text>
+        <SecondaryButton label="Back to Learn" onPress={backToLearn} />
       </View>
     );
   }
@@ -68,7 +95,12 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
         <Text style={styles.copy}>
           {view.session.status === 'abandoned' ? 'This session was abandoned.' : 'This session is finished.'}
         </Text>
-        <SecondaryButton label="Back to Learn" onPress={() => router.back()} />
+        <Text style={[styles.note, { color: secondary }]}>
+          {view.session.status === 'abandoned'
+            ? 'Answers you already gave stay saved. Start a new session from Learn.'
+            : 'Open Learn to start another one.'}
+        </Text>
+        <SecondaryButton label="Back to Learn" onPress={backToLearn} />
       </View>
     );
   }
@@ -78,6 +110,7 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
     return (
       <View style={styles.screen}>
         <Text style={styles.copy}>This session has no steps.</Text>
+        <SecondaryButton label="Back to Learn" onPress={backToLearn} />
       </View>
     );
   }
@@ -85,8 +118,12 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   const attempts = view.attempts.filter((attempt) => attempt.itemId === step.itemId && attempt.promptType === step.promptType);
   const used = attempts.filter((attempt) => attempt.status !== 'failed').length;
   const skipped = attempts.some((attempt) => attempt.status === 'skipped');
-  const canAnswer = used < MAX_TRIES && !skipped;
-  const canAdvance = attempts.length > 0;
+  const canAnswer = used < MAX_TRIES_PER_STEP && !skipped;
+  // learning-loop §5.4: a step advances on a graded attempt or a skip. Failed attempts (denied, interrupted) never count.
+  const canAdvance = attempts.some((attempt) => attempt.graded || attempt.status === 'skipped');
+  const canSpeak = capabilities?.stt === true;
+  const canHear = capabilities?.tts === true;
+  const simulated = canSpeak && capabilities?.onDevice !== true;
   const showTarget = step.promptType === 'listen-repeat' || feedback?.kind === 'pass' || feedback?.kind === 'try-again';
   const hint = feedback && (feedback.kind === 'pass' || feedback.kind === 'try-again') ? hintLine(feedback.score, step.notes) : null;
   const locale = view.speechLocale;
@@ -116,59 +153,123 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
     reload();
   }
 
-  async function hear() {
+  /** The session ended under the learner (abandoned, finished, or past 2 hours). Show its saved state. */
+  function sessionEnded() {
+    setFeedback(null);
+    setConfirmLeave(false);
+    allowLeave.current = true;
+    reload();
+    refreshSessionHome();
+  }
+
+  async function guarded(run: () => Promise<void> | void) {
+    if (inFlight.current) return;
+    inFlight.current = true;
     setBusy(true);
-    setPlayed(false);
+    setNotice(null);
     try {
-      await speech.speak(step.targetText, { locale });
-      setPlayed(true);
+      await run();
+    } catch (error) {
+      if (error instanceof SessionNotActiveError) sessionEnded();
+      else if (error instanceof SpeechInterruptedError) {
+        // Backgrounding or leaving the screen is the learner's own doing. Only a timeout needs an explanation.
+        if (error.reason === 'timeout') {
+          setNotice(
+            lastActivity.current === 'listening'
+              ? "I couldn't hear a response. Tap Repeat to try again, or type the phrase."
+              : "The audio didn't play. Tap Hear it to try again, or type the phrase.",
+          );
+        }
+      } else throw error;
     } finally {
+      inFlight.current = false;
       setBusy(false);
+      setActivity(null);
     }
   }
 
-  async function repeat() {
-    setBusy(true);
-    try {
-      if (isMockSpeech(speech)) speech.enqueue(scriptedStep(getDevScript(), step.targetText));
-      const outcome = await speech.listen({ locale }).result;
-      const score = outcome.transcript
-        ? await speech.score({
-            target: step.targetText,
-            variants: step.variants,
-            transcript: outcome.transcript,
-            inputMode: 'speech',
-            locale,
-            reading: step.reading,
-            romanization: step.romanization,
-            audioUri: null,
-          })
-        : null;
-      persist(step, outcome, score, 'speech');
-    } catch {
-      // A newer listen cancelled this one.
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function checkTyped() {
-    const transcript = typedRef.current.trim();
-    if (!transcript) return;
-    const score = await speech.score({
-      target: step.targetText,
-      variants: step.variants,
-      transcript,
-      inputMode: 'typed',
-      locale,
-      reading: step.reading,
-      romanization: step.romanization,
-      audioUri: null,
+  function hear() {
+    return guarded(async () => {
+      setPlayed(false);
+      lastActivity.current = 'speaking';
+      setActivity('speaking');
+      const run = interruptible(speech.speak(step.targetText, { locale }), () => {
+        void Promise.resolve()
+          .then(() => speech.stopSpeaking())
+          .catch(() => {});
+      });
+      interruptSpeech.current = run.interrupt;
+      try {
+        await run.promise;
+        setPlayed(true);
+      } finally {
+        interruptSpeech.current = null;
+      }
     });
-    persist(step, { transcript, endedBy: 'user' }, score, 'typed');
+  }
+
+  function repeat() {
+    if (!canSpeak) return Promise.resolve();
+    return guarded(async () => {
+      let outcome: ListenResult;
+      let score: TextMatchResult | null;
+      try {
+        if (isMockSpeech(speech)) speech.enqueue(scriptedStep(getDevScript(), step.targetText));
+        lastActivity.current = 'listening';
+        setActivity('listening');
+        const listening = speech.listen({ locale });
+        const run = interruptible(listening.result, () => listening.cancel());
+        interruptSpeech.current = run.interrupt;
+        try {
+          outcome = await run.promise;
+        } finally {
+          interruptSpeech.current = null;
+          setActivity(null);
+        }
+        score = outcome.transcript
+          ? await speech.score({
+              target: step.targetText,
+              variants: step.variants,
+              transcript: outcome.transcript,
+              inputMode: 'speech',
+              locale,
+              reading: step.reading,
+              romanization: step.romanization,
+              audioUri: null,
+            })
+          : null;
+      } catch (error) {
+        // Timeout and interrupts go to `guarded`. Anything else is a newer listen cancelling this one.
+        if (error instanceof SpeechInterruptedError) throw error;
+        return;
+      }
+      persist(step, outcome, score, 'speech');
+    });
+  }
+
+  function checkTyped() {
+    return guarded(async () => {
+      const transcript = typedRef.current.trim();
+      if (!transcript) return;
+      const score = await speech.score({
+        target: step.targetText,
+        variants: step.variants,
+        transcript,
+        inputMode: 'typed',
+        locale,
+        reading: step.reading,
+        romanization: step.romanization,
+        audioUri: null,
+      });
+      persist(step, { transcript, endedBy: 'user' }, score, 'typed');
+    });
   }
 
   function skip() {
+    return guarded(() => skipNow());
+  }
+
+  function skipNow() {
     const endedAt = Date.now();
     saveAttempt({
       sessionId,
@@ -188,13 +289,26 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
   }
 
   function next() {
-    const status = advanceSession(sessionId);
+    if (!canAdvance || inFlight.current) return;
+    // A second tap on the same step must not advance again.
+    const cursor = view?.session.cursor ?? -1;
+    if (advancedFrom.current === cursor) return;
+    advancedFrom.current = cursor;
+    let status: ReturnType<typeof advanceSession>;
+    try {
+      status = advanceSession(sessionId);
+    } catch (error) {
+      if (!(error instanceof SessionNotActiveError)) throw error;
+      sessionEnded();
+      return;
+    }
     if (status === 'completed') {
       allowLeave.current = true;
       router.replace({ pathname: '/practice/summary/[sessionId]', params: { sessionId } });
       return;
     }
     setFeedback(null);
+    setNotice(null);
     setPlayed(false);
     typedRef.current = '';
     setTyped('');
@@ -217,19 +331,22 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
         </Text>
         <Text style={styles.meaning}>{step.meaning}</Text>
         {showTarget ? <Text style={[styles.word, { color: accent }]}>{step.targetText}</Text> : null}
-        <Text style={[styles.note, { color: secondary }]}>
-          {step.promptType === 'listen-repeat'
-            ? 'Listen, then say it. The microphone is simulated.'
-            : 'Say the phrase from the meaning. The microphone is simulated.'}
-        </Text>
+        <Text style={[styles.note, { color: secondary }]}>{capabilities ? promptNote(step.promptType, canSpeak, simulated) : ''}</Text>
 
         <GlassCluster style={styles.controls} spacing={16}>
-          {step.promptType === 'listen-repeat' ? <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} /> : null}
+          {step.promptType === 'listen-repeat' && canHear ? (
+            <SecondaryButton label="Hear it" disabled={busy} onPress={() => void hear()} />
+          ) : null}
           {played ? <Text style={[styles.note, { color: secondary }]}>Played.</Text> : null}
+          {activityText ? (
+            <Text style={[styles.note, { color: accent }]} accessibilityLiveRegion="polite">
+              {activityText}
+            </Text>
+          ) : null}
 
           {canAnswer ? (
             <>
-              <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} />
+              {canSpeak ? <PrimaryButton label="Repeat" disabled={busy} onPress={() => void repeat()} /> : null}
               <Field
                 label="Type the phrase"
                 value={typed}
@@ -240,19 +357,20 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
                 returnKeyType="done"
                 onSubmitEditing={() => void checkTyped()}
               />
-              <SecondaryButton label="Check typing" disabled={typed.trim().length === 0} onPress={() => void checkTyped()} />
-              <SecondaryButton label="I don't know" disabled={busy} onPress={skip} />
+              <SecondaryButton label="Check typing" disabled={busy || typed.trim().length === 0} onPress={() => void checkTyped()} />
+              <SecondaryButton label="I don't know" disabled={busy} onPress={() => void skip()} />
             </>
           ) : null}
 
+          {notice ? <Notice text={notice} /> : null}
           {feedback ? <FeedbackPanel state={feedback} hint={hint} /> : null}
           {skipped ? <Text style={styles.copy}>Skipped.</Text> : null}
-          {canAdvance ? <PrimaryButton label="Next" onPress={next} /> : null}
+          {canAdvance ? <PrimaryButton label="Next" disabled={busy} onPress={next} /> : null}
         </GlassCluster>
 
         {confirmLeave ? (
           <View style={styles.confirm}>
-            <Text style={styles.copy}>Leave this session? It will be marked abandoned. Answers you already gave stay saved.</Text>
+            <Text style={styles.copy} accessibilityLiveRegion="polite">Leave this session? It will be marked abandoned. Answers you already gave stay saved.</Text>
             <SecondaryButton label="Stay" onPress={() => setConfirmLeave(false)} />
             <TextButton label="Leave" destructive onPress={leave} />
           </View>
@@ -262,6 +380,16 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
       </ScrollView>
     </View>
   );
+}
+
+function promptNote(promptType: StepView['promptType'], canSpeak: boolean, simulated: boolean): string {
+  if (!canSpeak) {
+    return promptType === 'listen-repeat'
+      ? "Type the phrase. Speaking isn't available in this build."
+      : "Type the phrase from the meaning. Speaking isn't available in this build.";
+  }
+  const suffix = simulated && __DEV__ ? ' The microphone is simulated.' : '';
+  return promptType === 'listen-repeat' ? `Listen, then say it.${suffix}` : `Say the phrase from the meaning.${suffix}`;
 }
 
 function isMockSpeech(service: SpeechService): service is MockSpeechService {
