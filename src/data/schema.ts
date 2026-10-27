@@ -4,7 +4,7 @@
 // non-INTEGER primary key hold NULL. drizzle-kit 0.31 emits NOT NULL for primary keys
 // on its own, but 1.0 RCs don't, so the schema states it rather than relying on the kit.
 import { sql, type SQL } from 'drizzle-orm';
-import { check, index, integer, real, sqliteTable, text, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
+import { check, index, integer, real, sqliteTable, text, uniqueIndex, type AnySQLiteColumn } from 'drizzle-orm/sqlite-core';
 
 import type { SessionStep } from '@/domain/session/buildSession';
 import type { WordScore } from '@/domain/scoring/types';
@@ -125,6 +125,9 @@ export const practiceSessions = sqliteTable(
   (t) => [
     check('practice_sessions_mode_check', oneOf(t.mode, SESSION_MODES)),
     check('practice_sessions_status_check', oneOf(t.status, SESSION_STATUSES)),
+    // learning-loop §3.4: at most one session is `active` at a time. A partial unique index
+    // lets any number of completed or abandoned rows share a status.
+    uniqueIndex('practice_sessions_single_active').on(t.status).where(sql`${t.status} = 'active'`),
   ],
 );
 

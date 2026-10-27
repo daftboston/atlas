@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `practice_sessions_single_active` ON `practice_sessions` (`status`) WHERE "practice_sessions"."status" = 'active';

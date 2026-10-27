@@ -77,18 +77,21 @@ function openExpoCompatibleClient(path: string) {
   return client as unknown as SQLiteDatabase & { closeSync(): void };
 }
 
+type MigrationConfig = Parameters<typeof migrate>[1];
+
 export type TestDatabase = ExpoSQLiteDatabase & { close(): void };
 
 /**
  * Opens a database through the expo-sqlite Drizzle driver and applies the bundled
  * migrations (migrations.js) with Drizzle's expo migrator, as the app does on startup.
- * `path` defaults to an in-memory database; pass a file path to test reopening.
+ * `path` defaults to an in-memory database; pass a file path to test reopening. `config` defaults
+ * to every bundled migration; pass a truncated one to build an older database for upgrade tests.
  */
-export async function openTestDatabase(path = ':memory:'): Promise<TestDatabase> {
+export async function openTestDatabase(path = ':memory:', config: MigrationConfig = migrations): Promise<TestDatabase> {
   const client = openExpoCompatibleClient(path);
   client.execSync('PRAGMA foreign_keys = ON;');
   const db = drizzle(client);
-  await migrate(db, migrations);
+  await migrate(db, config);
   return Object.assign(db, { close: () => client.closeSync() });
 }
 
