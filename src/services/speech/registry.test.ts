@@ -37,8 +37,18 @@ describe('speech registry', () => {
     }
   });
 
-  it('still honors an explicit setting in a release build', () => {
-    expect(speechImplFromEnv('mock', false)).toBe('mock');
+  it('never selects the mock in a release build, even when it is set explicitly', () => {
+    const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      expect(speechImplFromEnv('mock', false)).toBe('unavailable');
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn.mock.calls[0]?.[0]).toContain('EXPO_PUBLIC_SPEECH_IMPL=mock');
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('still honors the other explicit settings in a release build', () => {
     expect(speechImplFromEnv('ios', false)).toBe('ios');
     expect(speechImplFromEnv('unavailable', true)).toBe('unavailable');
   });

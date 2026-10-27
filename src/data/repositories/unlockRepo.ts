@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 
 import { activeGrantExpired, unusedGrantForfeited } from '@/domain/unlock/unlockRules';
 import type { UnlockStatus } from '@/domain/types';
@@ -49,15 +49,19 @@ export function createUnlockRepo(db: AtlasDatabase) {
       return expired;
     },
 
-    /** `earned` becomes `active`. The caller talks to Screen Time after this write. */
+    /**
+     * `earned` becomes `active`. The caller talks to Screen Time after this write. The check and the write are one
+     * UPDATE, so a grant cannot be activated twice or after its rollover; returns null when nothing was updated.
+     */
     activate(id: string, now: number): UnlockGrantRow | null {
       const grant = row(id);
-      if (!grant || grant.status !== 'earned') return null;
-      const expiresAt = now + grant.minutes * 60 * 1000;
-      db.update(unlockGrants)
-        .set({ status: 'active', activatedAt: now, expiresAt, screenTimeApplied: false })
-        .where(eq(unlockGrants.id, id))
+      if (!grant) return null;
+      const result = db
+        .update(unlockGrants)
+        .set({ status: 'active', activatedAt: now, expiresAt: now + grant.minutes * 60 * 1000, screenTimeApplied: false })
+        .where(and(eq(unlockGrants.id, id), eq(unlockGrants.status, 'earned'), gt(unlockGrants.expiresUnusedAt, now)))
         .run();
+      if (result.changes !== 1) return null;
       return row(id);
     },
 

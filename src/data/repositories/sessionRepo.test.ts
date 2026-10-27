@@ -10,7 +10,7 @@ import { DEFAULT_COURSE } from '../seed/courses';
 import { loadSeed } from '../seed/loadSeed';
 import { openTestDatabase } from '../testDatabase';
 import { createSettingsRepo } from './settingsRepo';
-import { createSessionRepo, StepIncompleteError } from './sessionRepo';
+import { createSessionRepo, OnboardingClosedError, StepIncompleteError } from './sessionRepo';
 
 let mockIdCounter = 0;
 jest.mock('@/lib/id', () => ({ newId: () => `id-${++mockIdCounter}` }));
@@ -427,6 +427,30 @@ describe('session repository', () => {
       const repo = createSessionRepo(db);
       const { id } = playSession(repo, 'onboarding', (step) => [{ transcript: step.targetText }, wrong, wrong]);
       expect(db.select().from(unlockGrants).all()).toMatchObject([{ sessionId: id, minutes: 15 }]);
+    });
+
+    it('rejects a second onboarding session once the first one is completed', () => {
+      const repo = createSessionRepo(db);
+      finishOnboarding(repo);
+      expect(() => repo.start('onboarding', NOW, ZONE)).toThrow(OnboardingClosedError);
+      expect(db.select().from(practiceSessions).all()).toHaveLength(1);
+      expect(db.select().from(unlockGrants).all()).toHaveLength(1);
+    });
+
+    it('rejects onboarding once the onboardingCompleted setting is true, and still allows daily', () => {
+      const repo = createSessionRepo(db);
+      createSettingsRepo(db).set('onboardingCompleted', true);
+      expect(() => repo.start('onboarding', NOW, ZONE)).toThrow(OnboardingClosedError);
+      expect(db.select().from(practiceSessions).all()).toHaveLength(0);
+      expect(repo.start('daily', NOW, ZONE).kind).toBe('started');
+    });
+
+    it('resumes an in-progress onboarding session and allows a retry after one was abandoned', () => {
+      const repo = createSessionRepo(db);
+      const first = repo.start('onboarding', NOW, ZONE);
+      expect(repo.start('onboarding', NOW, ZONE)).toEqual({ kind: 'resumed', id: first.kind === 'started' ? first.id : '' });
+      if (first.kind === 'started') repo.abandon(first.id, NOW);
+      expect(repo.start('onboarding', NOW, ZONE).kind).toBe('started');
     });
 
     it('still counts typed answers, and they cap at Good', () => {

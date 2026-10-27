@@ -77,6 +77,14 @@ export class StepIncompleteError extends Error {
   }
 }
 
+/** `start('onboarding')` after onboarding is completed, or when a completed onboarding session already exists. */
+export class OnboardingClosedError extends Error {
+  constructor() {
+    super('Onboarding has already been completed');
+    this.name = 'OnboardingClosedError';
+  }
+}
+
 export type SessionRepository = ReturnType<typeof createSessionRepo>;
 
 type AttemptRow = typeof practiceAttempts.$inferSelect;
@@ -115,6 +123,14 @@ export function createSessionRepo(db: AtlasDatabase) {
 
   function activeSession(): PracticeSession | null {
     return db.select().from(practiceSessions).where(eq(practiceSessions.status, 'active')).get() ?? null;
+  }
+
+  function onboardingFinished(): boolean {
+    return !!db
+      .select({ id: practiceSessions.id })
+      .from(practiceSessions)
+      .where(and(eq(practiceSessions.mode, 'onboarding'), eq(practiceSessions.status, 'completed')))
+      .get();
   }
 
   function courseItems(courseId: string) {
@@ -173,6 +189,9 @@ export function createSessionRepo(db: AtlasDatabase) {
     },
 
     start(mode: SessionMode, now: number, timeZone: string): StartResult {
+      if (mode === 'onboarding' && (createSettingsRepo(db).get('onboardingCompleted') === true || onboardingFinished())) {
+        throw new OnboardingClosedError();
+      }
       this.abandonStale(now);
       const active = activeSession();
       if (active) return { kind: 'resumed', id: active.id };
