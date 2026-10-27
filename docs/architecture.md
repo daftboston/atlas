@@ -13,6 +13,7 @@ Out of scope for v0: accounts, cloud sync, analytics, push notifications, real F
 
 - Expo 57 / React Native 0.86, Expo Router with routes in root `app/`, TypeScript strict.
 - SQLite + Drizzle for persistence, Zustand for client state, NativeWind for styling, Reanimated for animation.
+- **v0 implementation note:** Zustand and NativeWind are **not adopted in v0**. The shipped `src/state/` stores are hand-rolled `useSyncExternalStore` stores and styling uses plain React Native `StyleSheet`, which is the decision for now. Read "Zustand" and "NativeWind" in the rest of this doc as the original plan; adopting either needs lead approval as a new dependency.
 - Bundle ID `daft.atlas`, EAS dev builds.
 - Daniel has a Mac, no iPhone, and no paid Apple Developer account. iOS Simulator is the first target. Anything that needs a paid entitlement or a physical device (FamilyControls, DeviceActivity) stays behind a stub.
 - Local-first. v0 must work with no network, except for anything the speech decision (OQ-2) puts in the cloud.

@@ -55,52 +55,51 @@ Project-specific rules for this repo (override the generic guidance above where 
 
 ### Folder layout
 
-This is the target layout from [architecture §5](docs/architecture.md#5-folder-convention). Put new code where it says; folders are created as the work that needs them lands. The `@/*` import alias points to `./src/*` (`tsconfig.json`; Jest picks it up through `jest-expo`).
+The `@/*` import alias points to `./src/*` (`tsconfig.json`; Jest picks it up through `jest-expo`). This map describes what is on `main` today. The target layout, with the files still to come (`queueRepo`, `attemptRepo`, `modules/`), is in [architecture §5](docs/architecture.md#5-folder-convention).
 
 ```
 app/                        Routes only. Thin: compose components, call state hooks.
+  (onboarding)/             welcome, language, mic, habit, first-session, done.
+  (tabs)/                   learn, review, unlock, settings.
+  practice/                 [sessionId].tsx and summary/[sessionId].tsx.
 src/
   components/
-    ui/                     Primitives (Button, Card, ProgressRing). NativeWind only.
-    practice/               MicButton, PromptCard, WordDiff, FeedbackPanel, SessionProgress.
-    unlock/                 GrantCard, ScreenTimeStatus.
-  state/                    sessionStore.ts, settingsStore.ts, unlockStore.ts
-  domain/
-    types.ts                Shared domain types (mirrors learning-loop entities).
-    scheduler/              fsrs.ts (wraps ts-fsrs), grading.ts (score → rating)
-    session/                buildSession.ts, sessionRules.ts
-    scoring/                textMatch.ts (engine-independent baseline scorer, language-agnostic)
-    language/               types.ts (LanguageProfile), registry.ts, profiles/es.ts (v0), profiles/fr.ts (test fixture). See §10
-    unlock/                 unlockRules.ts
-    memory/                 promotion.ts (Long-Term Memory criteria)
-    config.ts               All tunable constants in one place (thresholds, limits, durations).
+    ui/                     Glass.tsx (liquid-glass surfaces), Wash.tsx (background), ios.tsx (iOS-style primitives). Plain StyleSheet; no NativeWind.
+    practice/               PracticeSession, SessionHome, SessionSummary, FeedbackPanel, WordDiff.
+    (root)                  Template-era Themed.tsx, useColorScheme, useClientOnlyValue, plus LanguageSetup, SampleLesson, Placeholder.
+  constants/Colors.ts       Harbor palette (light and dark).
+  content/sample-lesson.ts  V0_COURSE and the sample lesson (teaches seed item `es-v0-001`).
+  state/                    Hand-rolled useSyncExternalStore stores, not Zustand: learnerStore, sessionStore, reviewStore, settingsStore, unlockStore; bootstrap.ts (DB open, migrations, seed, hydrate), accent.ts, devSpeechScript.ts.
+  domain/                   Pure TS, injected `now`, Jest-tested.
+    types.ts, config.ts     Shared types and every tunable constant.
+    scoring/                textMatch.ts (language-agnostic scorer), feedback.ts, types.ts.
+    language/               types.ts (LanguageProfile), registry.ts, words.ts, profiles/es.ts (v0), profiles/fr.ts (test fixture).
+    scheduler/              fsrs.ts (wraps ts-fsrs), grading.ts (score to rating).
+    session/                buildSession.ts, sessionRules.ts.
+    unlock/                 unlockRules.ts.
+    memory/                 promotion.ts, suspend.ts.
+    settings/               limits.ts (clamps for the settings screen).
   data/
-    db.ts                   Opens expo-sqlite, applies Drizzle migrations (useMigrations).
-    schema.ts               Drizzle tables (learning-loop §3).
+    db.ts, client.ts        Opens expo-sqlite and applies Drizzle migrations.
+    schema.ts               Drizzle tables.
     migrations/             drizzle-kit output, committed.
-    repositories/           knowledgeRepo.ts, queueRepo.ts, sessionRepo.ts, attemptRepo.ts, unlockRepo.ts, settingsRepo.ts
-    seed/                   loadSeed.ts (idempotent, keyed by seedId). Imports `content/seed/seed-phrases-v0.json` from the repo root (schema: learning-loop §11)
+    repositories/           courseRepo, knowledgeRepo, learnerRepo, reviewRepo, savedWordRepo, sessionRepo, settingsRepo, unlockRepo.
+    seed/                   loadSeed.ts (idempotent, keyed by seedId), seedSchema.ts, courses.ts. Imports `content/seed/seed-phrases-v0.json` (schema: learning-loop §11).
+    testDatabase.ts         Test-only Drizzle driver on node:sqlite.
   services/
-    registry.ts
-    speech/                 types.ts, mock.ts, ios.ts (later cloud.ts)
-    screenTime/             types.ts, stub.ts (later ios.ts)
-  lib/                      time.ts (local-day boundary), id.ts (UUIDs via expo-crypto), text.ts (normalize)
-modules/                    Expo local native modules (future: atlas-speech, atlas-screen-time)
-docs/
+    speech/                 types.ts, mock.ts (default on Simulator and Jest), ios.ts (placeholder until OQ-8), registry.ts (picks the impl from EXPO_PUBLIC_SPEECH_IMPL).
+    screenTime/             types.ts, stub.ts (later ios.ts, needs a real iPhone and a paid account).
+  lib/                      time.ts (local-day boundary), id.ts (UUIDs via expo-crypto).
+content/seed/               seed-phrases-v0.json (60 Spanish phrases).
+docs/                       architecture.md, learning-loop.md, roadmap.md.
 ```
-
-Template-era code that was moved under `src/` as-is (architecture §5.1) and is not in the map above yet:
-
-- `src/components/` also holds the template's `Themed.tsx`, `useColorScheme.ts`, `useClientOnlyValue.ts` (+ `.web.ts` variants), plus `LanguageSetup.tsx`, `SampleLesson.tsx` and `Placeholder.tsx` (stand-in for routes that aren't built yet).
-- `src/constants/Colors.ts` (template theme colors).
-- `src/content/sample-lesson.ts` (the one sample lesson, which teaches seed item `es-v0-001`; lesson words reference seed items by `seedId` and never create knowledge items). The seed deck stays in `content/seed/` at the repo root.
 
 Persistence (on-device, expo-sqlite + Drizzle):
 
 - `src/data/schema.ts` is the source for the tables. After changing it, run `npm run db:generate` (drizzle-kit, `driver: 'expo'`) and commit the new `.sql` file, `meta/` (journal and snapshot) and the regenerated `migrations.js` under `src/data/migrations/`. Never edit generated migrations by hand. Drizzle is pinned to the stable line (drizzle-orm 0.45.x, drizzle-kit 0.31.x).
 - `.sql` migrations reach the bundle through `babel-plugin-inline-import` (`babel.config.js`) and `sourceExts.push('sql')` (`metro.config.js`), as Drizzle's Expo guide documents.
 - Repositories (`src/data/repositories/`) take an `AtlasDatabase`, so the same code runs on expo-sqlite in the app and in Jest. `src/data/testDatabase.ts` (test-only) runs Drizzle's expo-sqlite driver, its migrator and the bundled `migrations.js` on top of Node's built-in `node:sqlite`, through a small adapter that supplies the synchronous expo-sqlite calls the driver uses. UI code goes through `src/state/` and never imports `src/data` directly.
-- `src/state/learnerStore.ts` mirrors the learner profile and saved words from SQLite. It's a `useSyncExternalStore` store until Zustand is approved.
+- `src/state/learnerStore.ts` mirrors the learner profile and saved words from SQLite. Like the other stores in `src/state/`, it is a hand-rolled `useSyncExternalStore` store. Zustand and NativeWind are not adopted in v0 (architecture §2).
 - UI tests replace the repository with `__tests__/support/memoryLearnerRepo.ts` (Jest can't run native SQLite).
 
 Route tests live in `__tests__/` at the repo root, because Expo Router treats every file in `app/` as a route. Everything else is colocated as `*.test.ts`.
