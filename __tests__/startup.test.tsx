@@ -31,6 +31,8 @@ describe('Startup (architecture §3 root layout)', () => {
     expect(await screen.findByRole('header', { name: ERROR_TITLE })).toBeOnTheScreen();
     expect(screen.getByText('unable to open database file')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Retry' })).toBeOnTheScreen();
+    // The next step is written out, not only a raw error.
+    expect(screen.getByText('Tap Retry. If it keeps failing, close Atlas and open it again.')).toBeOnTheScreen();
     // The app itself never mounted.
     expect(screen.queryByRole('header', APP_OPEN)).not.toBeOnTheScreen();
   });
