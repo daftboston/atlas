@@ -1,11 +1,12 @@
 import { DarkTheme, DefaultTheme, Redirect, Stack, ThemeProvider, useSegments } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, type ReactElement } from 'react';
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import 'react-native-reanimated';
 
 import { Text, View } from '@/components/Themed';
 import { useColorScheme } from '@/components/useColorScheme';
+import { PrimaryButton } from '@/components/ui/ios';
 import { Wash } from '@/components/ui/Wash';
 import Colors from '@/constants/Colors';
 import { useAppBootstrap } from '@/state/bootstrap';
@@ -25,7 +26,7 @@ export const unstable_settings = {
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const { ready, error } = useAppBootstrap();
+  const { ready, error, retry } = useAppBootstrap();
 
   useEffect(() => {
     if (ready || error) {
@@ -34,23 +35,33 @@ export default function RootLayout() {
   }, [ready, error]);
 
   if (error) {
-    return <StartupError message={error.message} />;
+    return <StartupError message={error.message} onRetry={retry} />;
   }
 
   if (!ready) {
-    return null;
+    // The splash screen covers the first load. This shows while Retry runs.
+    return <StartupLoading />;
   }
 
   return <RootLayoutNav />;
 }
 
-function StartupError({ message }: { message: string }) {
+function StartupLoading() {
+  return (
+    <View lightColor={Colors.light.wash} darkColor={Colors.dark.wash} style={styles.loading}>
+      <ActivityIndicator accessibilityLabel="Opening Atlas" />
+    </View>
+  );
+}
+
+function StartupError({ message, onRetry }: { message: string; onRetry: () => void }) {
   return (
     <View lightColor={Colors.light.wash} darkColor={Colors.dark.wash} style={styles.error}>
       <Text style={styles.errorTitle} accessibilityRole="header">
         Atlas couldn&apos;t open your saved data
       </Text>
       <Text style={styles.errorMessage}>{message}</Text>
+      <PrimaryButton label="Retry" onPress={onRetry} />
     </View>
   );
 }
@@ -110,6 +121,7 @@ function RootLayoutNav() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  loading: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   error: {
     flex: 1,
     padding: 24,
