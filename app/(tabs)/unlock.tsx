@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { BlockedAppsSection } from '@/components/blocking/BlockedAppsSection';
 import { Group, PrimaryButton, ScreenTitle, SectionFooter, SectionHeader } from '@/components/ui/ios';
+import { isBlockingDemoEnabled } from '@/services/screenTime/demo';
 import type { UnlockGrantRow } from '@/data/repositories/unlockRepo';
 import { activateGrant, refreshUnlock, useUnlock } from '@/state/unlockStore';
 
@@ -19,13 +21,15 @@ function Grant({ grant, now }: { grant: UnlockGrantRow; now: number }) {
     <View style={styles.grant}>
       <Text style={styles.minutes}>{grant.minutes} minutes</Text>
       {grant.status === 'active' && grant.expiresAt !== null ? (
-        <Text style={[styles.meta, { color: secondary }]}>{remainingLabel(grant.expiresAt, now)}</Text>
+        <Text style={[styles.meta, { color: secondary }]} accessibilityRole="timer">
+          {remainingLabel(grant.expiresAt, now)}
+        </Text>
       ) : null}
       {grant.status === 'earned' ? <Text style={[styles.meta, { color: secondary }]}>Earned</Text> : null}
       {grant.status === 'expired' ? <Text style={[styles.meta, { color: secondary }]}>Expired</Text> : null}
       {grant.status === 'earned' ? (
         <View style={styles.activate}>
-          <PrimaryButton label="Activate" onPress={() => void activateGrant(grant.id)} />
+          <PrimaryButton label={`Activate ${grant.minutes} minutes`} title="Activate" onPress={() => void activateGrant(grant.id)} />
         </View>
       ) : null}
     </View>
@@ -45,7 +49,9 @@ export default function UnlockScreen() {
   const visible = unlock.grants.filter((grant) => grant.status !== 'forfeited');
   const status =
     unlock.availability === 'authorized'
-      ? 'Screen Time is simulated as on.'
+      ? isBlockingDemoEnabled()
+        ? 'Screen Time is simulated as on.'
+        : 'Screen Time is on.'
       : 'Screen Time is unavailable. This timer still runs.';
 
   return (
@@ -69,6 +75,7 @@ export default function UnlockScreen() {
           ))}
         </Group>
       )}
+      {isBlockingDemoEnabled() ? <BlockedAppsSection /> : null}
     </ScrollView>
   );
 }

@@ -5,6 +5,8 @@ export type ShieldSelection = {
   token: string;
   appCount: number;
   categoryCount: number;
+  /** Demo only: ids from the local mock app list. The real selection is opaque and never carries ids. */
+  appIds?: string[];
 };
 
 export type ScreenTimeEvent = { type: 'shieldLifted'; until: number } | { type: 'shieldRestored' } | { type: 'authorizationChanged'; availability: ScreenTimeAvailability };

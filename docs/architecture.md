@@ -34,11 +34,14 @@ app/
     _layout.tsx               Tab bar: Learn, Review, Unlock, Settings.
     learn.tsx                 Home. Primary CTA "Start session" (daily mode). Shows today's due + new counts and streak.
     review.tsx                Due queue overview, upcoming load (next 7 days), mastered count, "Review only" CTA.
-    unlock.tsx                Earned / active / expired UnlockGrants, activate button, Screen Time status.
+    unlock.tsx                Earned / active / expired UnlockGrants, activate button, Screen Time status. In demo builds also "Blocked apps" with Try opening (§7.1).
     settings.tsx              Daily new-item limit, session length, desired retention (advanced), mic/Screen Time status, dev menu in __DEV__.
   practice/
     [sessionId].tsx           Full-screen modal, no tabs. Runs the session: prompt → listen → feedback → next.
     summary/[sessionId].tsx   Session results, unlock earned (if any), "Done" back to Learn.
+  blocked/                    Blocking demo only (§7.1).
+    picker.tsx                "Blocked apps" picker (mock list).
+    [appId].tsx               Full-screen modal: the Atlas block screen, or "Unlocked, mm:ss left".
 ```
 
 Navigation rules:
@@ -71,7 +74,7 @@ Data (src/data — Drizzle/SQLite)
 Key rules:
 - **SQLite is the source of truth** for KnowledgeItems, queue state, attempts, feedback, grants, and settings. Zustand stores mirror what the UI needs and rehydrate from repositories on launch. Live lists can use Drizzle's `useLiveQuery` for `expo-sqlite`.
 - **Domain is pure and Jest-tested** with injected time (`now: number`). No `Date.now()` inside domain functions.
-- **Composition root:** `src/services/registry.ts` picks implementations once at startup from `EXPO_PUBLIC_SPEECH_IMPL` (`mock` | `ios` | `cloud`) and `EXPO_PUBLIC_SCREENTIME_IMPL` (`stub` | `ios`). Tests always use `mock` / `stub`.
+- **Composition root:** `src/services/registry.ts` picks implementations once at startup from `EXPO_PUBLIC_SPEECH_IMPL` (`mock` | `ios` | `cloud` | `unavailable`) and `EXPO_PUBLIC_SCREENTIME_IMPL` (`stub` | `ios`). Tests always use `mock` / `stub`. When `EXPO_PUBLIC_SPEECH_IMPL` is unset, development builds (`__DEV__`) and Jest use `mock`, and a release build uses `unavailable` (`stt: false`, `tts: false`), so the UI offers typed answers only and a shipped build can never pass a step with scripted speech.
 - **Writes for one attempt happen in one transaction:** PracticeAttempt, Feedback, ReviewQueueEntry update, ReviewLog row, and the KnowledgeItem status change. Either all are saved or none are.
 
 ## 5. Folder convention
@@ -83,7 +86,8 @@ src/
     ui/                     Primitives (Button, Card, ProgressRing). NativeWind only.
     practice/               MicButton, PromptCard, WordDiff, FeedbackPanel, SessionProgress.
     unlock/                 GrantCard, ScreenTimeStatus.
-  state/                    sessionStore.ts, settingsStore.ts, unlockStore.ts
+    blocking/               Blocking demo UI: BlockedAppPicker, BlockedAppsSection, BlockedAppScreen, AppIcon (§7.1).
+  state/                    sessionStore.ts, settingsStore.ts, unlockStore.ts, blockingStore.ts (demo)
   domain/
     types.ts                Shared domain types (mirrors learning-loop entities).
     scheduler/              fsrs.ts (wraps ts-fsrs), grading.ts (score → rating)
@@ -91,18 +95,19 @@ src/
     scoring/                textMatch.ts (engine-independent baseline scorer, language-agnostic)
     language/               types.ts (LanguageProfile), registry.ts, profiles/es.ts (v0), profiles/fr.ts (test fixture). See §10
     unlock/                 unlockRules.ts
+    blocking/               apps.ts (mock app list), lockMachine.ts (locked / practicing / unlocked / relocked). Demo only.
     memory/                 promotion.ts (Long-Term Memory criteria)
     config.ts               All tunable constants in one place (thresholds, limits, durations).
   data/
     db.ts                   Opens expo-sqlite, applies Drizzle migrations.
     schema.ts               Drizzle tables (learning-loop §3).
     migrations/             drizzle-kit output, committed.
-    repositories/           knowledgeRepo.ts, queueRepo.ts, sessionRepo.ts, attemptRepo.ts, unlockRepo.ts, settingsRepo.ts
+    repositories/           knowledgeRepo.ts, queueRepo.ts, sessionRepo.ts, attemptRepo.ts, unlockRepo.ts, settingsRepo.ts, blockedAppsRepo.ts (demo)
     seed/                   loadSeed.ts (idempotent, keyed by seedId). Imports `content/seed/seed-phrases-v0.json` from the repo root (schema: learning-loop §11)
   services/
     registry.ts
     speech/                 types.ts, mock.ts, ios.ts (later cloud.ts)
-    screenTime/             types.ts, stub.ts (later ios.ts)
+    screenTime/             types.ts, stub.ts, demo.ts (later ios.ts)
   lib/                      time.ts (local-day boundary), id.ts (UUIDs via expo-crypto), text.ts (normalize)
 modules/                    Expo local native modules (future: atlas-speech, atlas-screen-time)
 docs/
@@ -245,6 +250,31 @@ export interface ScreenTimeService {
 - The rest of the app treats `'unavailable'` as normal: grants are still earned and shown, and activating one just starts a visible timer.
 - **Hard rule:** no domain function reads Screen Time state. Screen Time is downstream of `UnlockGrant` and never upstream of learning progress.
 - The real `ios.ts` (FamilyControls + DeviceActivity + ManagedSettings, via a local Expo module in `modules/atlas-screen-time`) is deferred until there is a device and a paid developer account. Atlas iOS Native owns it, and Atlas Security reviews it before it ships.
+
+## 7.1 Blocking demo (simulator, no native code)
+
+The demo shows the whole loop (locked, practice, earned unlock, countdown, relock) without FamilyControls, a device, or a native target. It sits **on top of** the §7 interface and changes nothing about the real design.
+
+**What it is.** A "Blocked apps" picker over a local mock list (Instagram, Facebook, Pinterest, TikTok, YouTube, X, in `domain/blocking/apps.ts`). "Try opening" on the Unlock tab simulates opening one. If it is locked, a full-screen Atlas block screen reads "Instagram is locked. Practice to unlock." and "Start practice" runs the existing session. Finishing it earns the usual `UnlockGrant`, which is activated, and the app shows "Unlocked, mm:ss left". When the grant expires the app relocks. Every demo screen carries "Demo: real blocking needs an iPhone".
+
+**When it is on.** `isBlockingDemoEnabled()` in `services/screenTime/demo.ts`: always in `__DEV__`, and in any build with `EXPO_PUBLIC_BLOCKING_DEMO=1` (set for the `development` and `preview` profiles in `eas.json`, never `production`). When on, hydrate marks the stub as simulated `'authorized'`, so `activateGrant` reaches `liftShield` exactly as it would on a device.
+
+**State machine** (`domain/blocking/lockMachine.ts`, pure):
+
+```
+locked --start practice--> practicing --session completed, grant activated--> unlocked
+practicing --session abandoned or ended--> locked
+unlocked --grant expires--> relocked --start practice--> practicing
+```
+
+- **The unlock grant is the source of truth.** `reconcileLock` derives the state from the active `UnlockGrant` and the practice session's status. `blocked_apps.state` (migration `0004`) only remembers which apps are chosen and whether the last state was `relocked`, so a restart shows the right thing. A live active grant unlocks every blocked app, as one grant would on a device, where the shield is one selection.
+- Nothing in `domain/` outside `domain/blocking/` reads this state, and learning progress never depends on it (the §7 hard rule).
+
+**Swapping in the real implementation.** The demo uses the existing `ScreenTimeService` calls only. `applyShield(selection)` carries the chosen ids in the optional `ShieldSelection.appIds` (demo only). To go real:
+1. Add `services/screenTime/ios.ts` (FamilyControls, DeviceActivity, ManagedSettings) and register it in the service registry instead of `stub.ts`. `unlockStore`, `blockingStore` and the screens do not change.
+2. `pickSelection()` presents `FamilyActivityPicker` and returns the opaque token. The in-app picker screen (`blocked/picker`) and the mock list are then removed. They exist only because the simulator has no picker.
+3. The block screen becomes the ShieldConfiguration extension: "Start practice" opens `atlas://practice/<id>`. The in-app `blocked/[appId]` screen is demo only.
+4. Drop `EXPO_PUBLIC_BLOCKING_DEMO` from preview builds. Delete `blocked_apps` in a later migration if it is not needed.
 
 ## 8. Acceptance criteria for this doc
 

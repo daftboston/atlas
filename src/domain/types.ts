@@ -108,6 +108,9 @@ export const SESSION_MODES = ['onboarding', 'daily', 'review-only'] as const;
 /** learning-loop §3.7. */
 export const UNLOCK_STATUSES = ['earned', 'active', 'expired', 'forfeited'] as const;
 export type UnlockStatus = (typeof UNLOCK_STATUSES)[number];
+/** Blocking demo lock states (docs/architecture.md §7.1). `relocked` is a locked app whose unlock just ran out. */
+export const BLOCKED_APP_STATES = ['locked', 'practicing', 'unlocked', 'relocked'] as const;
+export type BlockedAppState = (typeof BLOCKED_APP_STATES)[number];
 export type SessionMode = (typeof SESSION_MODES)[number];
 
 export const SESSION_STATUSES = ['active', 'completed', 'abandoned'] as const;

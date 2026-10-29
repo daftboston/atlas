@@ -15,4 +15,12 @@ describe('screen time stub', () => {
     await screenTime.restoreShield();
     expect(screenTime.events()).toEqual([{ type: 'authorizationChanged', availability: 'authorized' }, { type: 'shieldLifted', until: 5_000 }, { type: 'shieldRestored' }]);
   });
+
+  it('remembers the blocked selection it was given, for the blocking demo', async () => {
+    const screenTime = createScreenTimeStub();
+    await expect(screenTime.getSelection()).resolves.toBeNull();
+    const selection = { token: 'demo', appCount: 2, categoryCount: 0, appIds: ['instagram', 'x'] };
+    await screenTime.applyShield(selection);
+    await expect(screenTime.getSelection()).resolves.toEqual(selection);
+  });
 });

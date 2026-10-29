@@ -3,6 +3,7 @@ import { StyleSheet } from 'react-native';
 import { Text, useThemeColor, View } from '@/components/Themed';
 import { Group, PrimaryButton, SectionFooter } from '@/components/ui/ios';
 import { COURSES, languageLabel } from '@/content/sample-lesson';
+import { useSingleTap } from '@/lib/useSingleTap';
 import { startCourse } from '@/state/learnerStore';
 
 export function LanguageSetup() {
@@ -12,6 +13,7 @@ export function LanguageSetup() {
   const targetLabel = languageLabel(course.targetLanguage);
   const summary = `You speak ${nativeLabel}, you're learning ${targetLabel}`;
   const secondary = useThemeColor({}, 'secondaryText');
+  const start = useSingleTap(() => startCourse(course.courseId));
 
   return (
     <View style={styles.container}>
@@ -26,7 +28,7 @@ export function LanguageSetup() {
       <Text style={[styles.copy, { color: secondary }]}>More languages are coming later. This first lesson is a sample.</Text>
       <PrimaryButton
         label="Continue"
-        onPress={() => startCourse(course.courseId)}
+        onPress={start}
       />
       <SectionFooter>{`Starts the ${nativeLabel} to ${targetLabel} course`}</SectionFooter>
     </View>

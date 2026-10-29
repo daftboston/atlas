@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
+import { useSpeechMode, type SpeechMode } from '@/components/practice/useSpeechCapabilities';
 import { Text, View } from '@/components/Themed';
 import { ChoiceRow, Group, ScreenTitle, SectionFooter, SectionHeader, StepperRow, TextButton } from '@/components/ui/ios';
 import { languageLabel } from '@/content/sample-lesson';
@@ -9,6 +10,7 @@ import { SPANISH_ACCENTS } from '@/domain/language/profiles/es';
 import { chooseAccent } from '@/state/accent';
 import { DEV_SCRIPT_NAMES, setDevScript, useDevScript } from '@/state/devSpeechScript';
 import { clearProfile, useLearner } from '@/state/learnerStore';
+import { isBlockingDemoEnabled } from '@/services/screenTime/demo';
 import { setScreenTimeSimulation } from '@/services/screenTime/stub';
 import { refreshSessionHome } from '@/state/sessionStore';
 import { setDailyNewLimit, setDesiredRetention, setSessionSize, useSettings } from '@/state/settingsStore';
@@ -17,11 +19,18 @@ function percent(value: number): string {
   return `${Math.round(value * 100)}%`;
 }
 
+function speechCopy(mode: SpeechMode): string {
+  if (mode === 'typed-only') return "Speaking isn't available in this build, so you type your answers.";
+  if (mode === 'simulated' && __DEV__) return 'Listening and speaking use a simulated microphone in this build.';
+  return 'Atlas listens and speaks on this phone.';
+}
+
 export default function SettingsScreen() {
+  const mode = useSpeechMode();
   const { profile } = useLearner();
   const settings = useSettings();
   const script = useDevScript();
-  const [screenTimeOn, setScreenTimeOn] = useState(false);
+  const [screenTimeOn, setScreenTimeOn] = useState(isBlockingDemoEnabled());
   const accent = settings.speechLocale ?? SPANISH_ACCENTS[0].locale;
 
   return (
@@ -117,13 +126,11 @@ export default function SettingsScreen() {
         <SectionHeader>Microphone and Screen Time</SectionHeader>
         <Group>
           <View style={styles.note}>
-            <Text style={styles.copy}>
-              Listening and speaking use a simulated microphone in this build. Screen Time is not connected, so an unlock is a timer on this phone.
-            </Text>
+            <Text style={styles.copy}>{speechCopy(mode)} Screen Time is not connected, so an unlock is a timer on this phone.</Text>
           </View>
         </Group>
         <SectionFooter>
-          Choosing which apps to block needs a physical iPhone and a paid Apple Developer account. This Mac cannot block other apps.
+          Choosing which apps to block needs a physical iPhone and a paid Apple Developer account. Atlas can&apos;t block other apps yet.
         </SectionFooter>
       </View>
 

@@ -10,6 +10,7 @@ import type { SessionStep } from '@/domain/session/buildSession';
 import type { WordScore } from '@/domain/scoring/types';
 import {
   ATTEMPT_STATUSES,
+  BLOCKED_APP_STATES,
   CEFR_LEVELS,
   FSRS_STATES,
   INPUT_MODES,
@@ -253,4 +254,20 @@ export const unlockGrants = sqliteTable(
     screenTimeApplied: integer('screen_time_applied', { mode: 'boolean' }).notNull(),
   },
   (t) => [check('unlock_grants_status_check', oneOf(t.status, UNLOCK_STATUSES))],
+);
+
+/**
+ * Blocking demo (docs/architecture.md §7.1). A row exists for each app the learner chose to block. `appId` is a
+ * key from the local mock list, not a bundle id. `state` is the saved lock state, and `sessionId` is the practice
+ * session that is meant to unlock it while `state` is 'practicing'.
+ */
+export const blockedApps = sqliteTable(
+  'blocked_apps',
+  {
+    appId: text('app_id').primaryKey().notNull(),
+    state: text('state', { enum: BLOCKED_APP_STATES }).notNull(),
+    sessionId: text('session_id'),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (t) => [check('blocked_apps_state_check', oneOf(t.state, BLOCKED_APP_STATES))],
 );

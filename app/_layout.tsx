@@ -102,6 +102,8 @@ function RootLayoutNav() {
           options={{ presentation: 'fullScreenModal', title: 'Practice' }}
         />
         <Stack.Screen name="practice/summary/[sessionId]" options={{ title: 'Summary' }} />
+        <Stack.Screen name="blocked/picker" options={{ title: 'Blocked apps' }} />
+        <Stack.Screen name="blocked/[appId]" options={{ presentation: 'fullScreenModal', headerShown: false }} />
         </Stack>
       </View>
     </ThemeProvider>

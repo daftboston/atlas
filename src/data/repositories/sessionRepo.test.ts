@@ -10,7 +10,7 @@ import { DEFAULT_COURSE } from '../seed/courses';
 import { loadSeed } from '../seed/loadSeed';
 import { openTestDatabase } from '../testDatabase';
 import { createSettingsRepo } from './settingsRepo';
-import { createSessionRepo } from './sessionRepo';
+import { createSessionRepo, OnboardingClosedError, SessionNotActiveError, StepIncompleteError } from './sessionRepo';
 
 let mockIdCounter = 0;
 jest.mock('@/lib/id', () => ({ newId: () => `id-${++mockIdCounter}` }));
@@ -151,10 +151,14 @@ describe('session repository', () => {
     expect(db.select().from(reviewQueue).all()[0]).toMatchObject({ fsrsState: 'Learning' });
 
     let status: 'active' | 'completed' = 'active';
-    for (let i = 0; i < view.steps.length; i += 1) status = repo.advance(started.id, NOW + 2);
+    for (const [index, current] of view.steps.entries()) {
+      if (index > 0) answer(repo, started.id, current, view.speechLocale, { transcript: current.targetText });
+      status = repo.advance(started.id, NOW + 2);
+    }
     expect(status).toBe('completed');
     expect(db.select().from(practiceSessions).all()[0]).toMatchObject({ status: 'completed', cursor: view.steps.length });
-    expect(item(db, 'es-v0-001')).toMatchObject({ status: 'learning', masteredAt: null, introducedAt: NOW });
+    // Both steps of a new item are graded (§5.3), which moves the card out of Learning. Never straight to mastered.
+    expect(item(db, 'es-v0-001')).toMatchObject({ status: 'review', masteredAt: null, introducedAt: NOW });
   });
 
   it('writes two review logs for a new item and none for a retry', () => {
@@ -312,7 +316,7 @@ describe('session repository', () => {
     expect(status).toBe('completed');
     expect(db.select().from(unlockGrants).all()).toMatchObject([{ sessionId: id, minutes: 15, status: 'earned' }]);
     expect(repo.getPractice(id, NOW, ZONE)?.unlock).toEqual({ kind: 'grant', minutes: 15 });
-    expect(item(db, 'es-v0-001')?.status).toBe('learning');
+    expect(item(db, 'es-v0-001')?.status).toBe('review');
   });
 
   it('does not earn an unlock once today already has 60 minutes', () => {
@@ -352,24 +356,263 @@ describe('session repository', () => {
     if (started.kind !== 'started') throw new Error('expected a session');
     const view = repo.getPractice(started.id, NOW, ZONE);
     if (!view) throw new Error('expected a session');
-    for (const step of view.steps.slice(0, 3)) answer(repo, started.id, step, view.speechLocale, { transcript: step.targetText });
+    for (const step of view.steps) answer(repo, started.id, step, view.speechLocale, { transcript: step.targetText });
     for (let i = 0; i < view.steps.length - 1; i += 1) repo.advance(started.id, NOW, ZONE);
     db.run(sql`CREATE TRIGGER fail_grant BEFORE INSERT ON unlock_grants BEGIN SELECT RAISE(ABORT, 'fail'); END`);
     expect(() => repo.advance(started.id, NOW, ZONE)).toThrow(/fail/);
     expect(db.select().from(practiceSessions).all()[0]?.status).toBe('active');
     expect(db.select().from(unlockGrants).all()).toEqual([]);
   });
+
+  describe('unlock integrity (learning-loop §5.4, §8.1)', () => {
+    const wrong = { transcript: 'zzz' };
+
+    it('earns no grant for a 1-item session answered only wrong, even with every retry used', () => {
+      createSettingsRepo(db).set('dailyNewLimit', 1);
+      const repo = createSessionRepo(db);
+      // 2 steps x 3 tries = 6 scored attempts, all scoring 0. Only the 2 try-1 attempts are graded.
+      const { id, status } = playSession(repo, 'daily', () => [wrong, wrong, wrong]);
+
+      expect(status).toBe('completed');
+      expect(db.select().from(practiceAttempts).all()).toHaveLength(6);
+      expect(db.select().from(feedback).all().every((row) => row.overall === 0)).toBe(true);
+      expect(db.select().from(unlockGrants).all()).toEqual([]);
+      expect(repo.getPractice(id, NOW, ZONE)?.unlock).toEqual({ kind: 'not-enough' });
+    });
+
+    it('earns no grant for an onboarding session that was only silence', () => {
+      const repo = createSessionRepo(db);
+      const { id, status } = playSession(repo, 'onboarding', () => [
+        { status: 'captured', transcript: null },
+        { status: 'captured', transcript: null },
+      ]);
+
+      expect(status).toBe('completed');
+      expect(db.select().from(practiceAttempts).all()).toHaveLength(12);
+      expect(db.select().from(unlockGrants).all()).toEqual([]);
+      expect(repo.getPractice(id, NOW, ZONE)?.unlock).toEqual({ kind: 'not-enough' });
+    });
+
+    it('earns no grant when every step was skipped', () => {
+      const repo = createSessionRepo(db);
+      const { id } = playSession(repo, 'onboarding', () => [{ status: 'skipped', transcript: null }]);
+      expect(db.select().from(unlockGrants).all()).toEqual([]);
+      expect(repo.getPractice(id, NOW, ZONE)?.unlock).toEqual({ kind: 'not-enough' });
+    });
+
+    it('needs 3 real graded answers in onboarding: 2 real plus silence is not enough, 3 is', () => {
+      const repo = createSessionRepo(db);
+      const two = playSession(repo, 'onboarding', (step, index) =>
+        index < 2 ? [{ transcript: step.targetText }] : [{ status: 'captured', transcript: null }],
+      );
+      expect(repo.getPractice(two.id, NOW, ZONE)?.unlock).toEqual({ kind: 'not-enough' });
+      expect(db.select().from(unlockGrants).all()).toEqual([]);
+    });
+
+    it('earns the grant once the third real answer is there, silent steps notwithstanding', () => {
+      const repo = createSessionRepo(db);
+      const three = playSession(repo, 'onboarding', (step, index) =>
+        index < 3 ? [{ transcript: step.targetText }] : [{ status: 'captured', transcript: null }],
+      );
+      expect(db.select().from(unlockGrants).all()).toMatchObject([{ sessionId: three.id, minutes: 15 }]);
+    });
+
+    it('does not let retries raise the average: a wrong try 1 then a perfect retry stays at 10 minutes', () => {
+      const repo = createSessionRepo(db);
+      const { id } = playSession(repo, 'onboarding', (step) => [wrong, { transcript: step.targetText }]);
+      expect(db.select().from(unlockGrants).all()).toMatchObject([{ sessionId: id, minutes: 10 }]);
+    });
+
+    it('does not let a perfect try 1 followed by wrong retries lower the average', () => {
+      const repo = createSessionRepo(db);
+      const { id } = playSession(repo, 'onboarding', (step) => [{ transcript: step.targetText }, wrong, wrong]);
+      expect(db.select().from(unlockGrants).all()).toMatchObject([{ sessionId: id, minutes: 15 }]);
+    });
+
+    it('rejects a second onboarding session once the first one is completed', () => {
+      const repo = createSessionRepo(db);
+      finishOnboarding(repo);
+      expect(() => repo.start('onboarding', NOW, ZONE)).toThrow(OnboardingClosedError);
+      expect(db.select().from(practiceSessions).all()).toHaveLength(1);
+      expect(db.select().from(unlockGrants).all()).toHaveLength(1);
+    });
+
+    it('rejects onboarding once the onboardingCompleted setting is true, and still allows daily', () => {
+      const repo = createSessionRepo(db);
+      createSettingsRepo(db).set('onboardingCompleted', true);
+      expect(() => repo.start('onboarding', NOW, ZONE)).toThrow(OnboardingClosedError);
+      expect(db.select().from(practiceSessions).all()).toHaveLength(0);
+      expect(repo.start('daily', NOW, ZONE).kind).toBe('started');
+    });
+
+    it('resumes an in-progress onboarding session and allows a retry after one was abandoned', () => {
+      const repo = createSessionRepo(db);
+      const first = repo.start('onboarding', NOW, ZONE);
+      expect(repo.start('onboarding', NOW, ZONE)).toEqual({ kind: 'resumed', id: first.kind === 'started' ? first.id : '' });
+      if (first.kind === 'started') repo.abandon(first.id, NOW);
+      expect(repo.start('onboarding', NOW, ZONE).kind).toBe('started');
+    });
+
+    it('still counts typed answers, and they cap at Good', () => {
+      const repo = createSessionRepo(db);
+      const { id } = playSession(repo, 'onboarding', (step) => [{ transcript: step.targetText, inputMode: 'typed' }]);
+      expect(db.select().from(unlockGrants).all()).toMatchObject([{ sessionId: id, minutes: 15, status: 'earned' }]);
+      expect(Math.max(...db.select().from(reviewLogs).all().map((row) => row.rating))).toBe(3);
+    });
+
+    it('earns 10 minutes when the try-1 average is below 80', () => {
+      const { id } = playSession(createSessionRepo(db), 'onboarding', (step, index) => [
+        index % 2 === 0 ? { transcript: step.targetText } : wrong,
+      ]);
+      expect(db.select().from(unlockGrants).where(eq(unlockGrants.sessionId, id)).get()).toMatchObject({ minutes: 10 });
+    });
+
+    it('earns 15 minutes for a correct daily session (average 80 or more)', () => {
+      const repo = createSessionRepo(db);
+      const { id } = playSession(repo, 'daily', (step) => [{ transcript: step.targetText }]);
+      expect(db.select().from(unlockGrants).where(eq(unlockGrants.sessionId, id)).get()).toMatchObject({ minutes: 15 });
+    });
+
+    it('refuses to advance a step with no attempt, or with only failed attempts', () => {
+      const repo = createSessionRepo(db);
+      const started = repo.start('daily', NOW, ZONE);
+      if (started.kind !== 'started') throw new Error('expected a session');
+      const view = repo.getPractice(started.id, NOW, ZONE);
+      const step = view?.steps[0];
+      if (!step || !view) throw new Error('expected a step');
+
+      expect(() => repo.advance(started.id, NOW, ZONE)).toThrow(StepIncompleteError);
+      for (let attempt = 0; attempt < 3; attempt += 1) answer(repo, started.id, step, view.speechLocale, { status: 'failed', transcript: null });
+      expect(() => repo.advance(started.id, NOW, ZONE)).toThrow(StepIncompleteError);
+      expect(repo.getPractice(started.id, NOW, ZONE)?.session.cursor).toBe(0);
+
+      answer(repo, started.id, step, view.speechLocale, { transcript: step.targetText });
+      expect(repo.advance(started.id, NOW, ZONE)).toBe('active');
+      expect(repo.getPractice(started.id, NOW, ZONE)?.session.cursor).toBe(1);
+    });
+
+    it('lets an explicit skip advance a step, and refuses the last step too until it is complete', () => {
+      createSettingsRepo(db).set('dailyNewLimit', 1);
+      const repo = createSessionRepo(db);
+      const started = repo.start('daily', NOW, ZONE);
+      if (started.kind !== 'started') throw new Error('expected a session');
+      const view = repo.getPractice(started.id, NOW, ZONE);
+      if (!view || view.steps.length !== 2) throw new Error('expected two steps');
+
+      answer(repo, started.id, view.steps[0]!, view.speechLocale, { status: 'skipped', transcript: null });
+      expect(repo.advance(started.id, NOW, ZONE)).toBe('active');
+      expect(() => repo.advance(started.id, NOW, ZONE)).toThrow(StepIncompleteError);
+      expect(repo.getPractice(started.id, NOW, ZONE)?.session.status).toBe('active');
+      answer(repo, started.id, view.steps[1]!, view.speechLocale, { status: 'skipped', transcript: null });
+      expect(repo.advance(started.id, NOW, ZONE)).toBe('completed');
+      expect(db.select().from(unlockGrants).all()).toEqual([]);
+    });
+
+    it('ignores a repeated skip, a 4th answer, and any write after a skip', () => {
+      const repo = createSessionRepo(db);
+      const started = repo.start('daily', NOW, ZONE);
+      if (started.kind !== 'started') throw new Error('expected a session');
+      const view = repo.getPractice(started.id, NOW, ZONE);
+      const step = view?.steps[0];
+      const other = view?.steps[1];
+      if (!step || !other || !view) throw new Error('expected steps');
+
+      const results = [1, 2, 3, 4, 5].map(() => answer(repo, started.id, step, view.speechLocale, { transcript: 'zzz' }));
+      expect(results).toEqual(['recorded', 'recorded', 'recorded', 'ignored', 'ignored']);
+
+      expect(answer(repo, started.id, other, view.speechLocale, { status: 'skipped', transcript: null })).toBe('recorded');
+      expect(answer(repo, started.id, other, view.speechLocale, { status: 'skipped', transcript: null })).toBe('ignored');
+      expect(answer(repo, started.id, other, view.speechLocale, { transcript: 'zzz' })).toBe('ignored');
+      expect(db.select().from(practiceAttempts).all()).toHaveLength(4);
+      expect(db.select().from(reviewLogs).all()).toHaveLength(2);
+    });
+
+    it('refuses to record into a session that is not active', () => {
+      const repo = createSessionRepo(db);
+      const started = repo.start('daily', NOW, ZONE);
+      if (started.kind !== 'started') throw new Error('expected a session');
+      const view = repo.getPractice(started.id, NOW, ZONE);
+      const step = view?.steps[0];
+      if (!step || !view) throw new Error('expected a step');
+      repo.abandon(started.id, NOW);
+      expect(() => answer(repo, started.id, step, view.speechLocale, { transcript: 'Hola' })).toThrow(/not active/);
+    });
+  });
+  describe('stale sessions (learning-loop §5.4, the 2-hour rule)', () => {
+    const LATER = NOW + 2 * 60 * 60 * 1000 + 1;
+
+    function begin(repo: Repo) {
+      const started = repo.start('daily', NOW, ZONE);
+      if (started.kind !== 'started') throw new Error('expected a session');
+      const view = repo.getPractice(started.id, NOW, ZONE);
+      if (!view) throw new Error('expected a session');
+      return { id: started.id, view };
+    }
+
+    it('rejects recordAttempt on a session older than 2 hours and marks it abandoned', () => {
+      const repo = createSessionRepo(db);
+      const { id, view } = begin(repo);
+      const step = view.steps[0]!;
+      const late = { ...answerInput(id, step, view.speechLocale), startedAt: LATER, endedAt: LATER + 1 };
+      expect(() => repo.recordAttempt(late)).toThrow(SessionNotActiveError);
+      expect(db.select().from(practiceSessions).get()).toMatchObject({ status: 'abandoned', endedAt: LATER + 1 });
+      expect(db.select().from(practiceAttempts).all()).toHaveLength(0);
+    });
+
+    it('still accepts an attempt at exactly 2 hours', () => {
+      const repo = createSessionRepo(db);
+      const { id, view } = begin(repo);
+      const edge = NOW + 2 * 60 * 60 * 1000;
+      const input = { ...answerInput(id, view.steps[0]!, view.speechLocale), startedAt: edge, endedAt: edge };
+      expect(repo.recordAttempt(input)).toBe('recorded');
+    });
+
+    it('rejects advance on a session older than 2 hours: no completion, no grant, session abandoned', () => {
+      const repo = createSessionRepo(db);
+      const { id, view } = begin(repo);
+      for (const [index, step] of view.steps.entries()) {
+        answer(repo, id, step, view.speechLocale, { transcript: step.targetText });
+        if (index < view.steps.length - 1) repo.advance(id, NOW, ZONE);
+      }
+      expect(() => repo.advance(id, LATER, ZONE)).toThrow(SessionNotActiveError);
+      expect(db.select().from(practiceSessions).get()).toMatchObject({ status: 'abandoned', endedAt: LATER });
+      expect(db.select().from(unlockGrants).all()).toHaveLength(0);
+      expect(() => repo.advance(id, LATER, ZONE)).toThrow(SessionNotActiveError);
+    });
+
+    it('throws SessionNotActiveError for an abandoned or unknown session', () => {
+      const repo = createSessionRepo(db);
+      const { id, view } = begin(repo);
+      repo.abandon(id, NOW);
+      expect(() => repo.recordAttempt(answerInput(id, view.steps[0]!, view.speechLocale))).toThrow(SessionNotActiveError);
+      expect(() => repo.advance(id, NOW, ZONE)).toThrow(SessionNotActiveError);
+      expect(() => repo.advance('missing', NOW, ZONE)).toThrow(SessionNotActiveError);
+    });
+  });
 });
 
-function finishOnboarding(repo: ReturnType<typeof createSessionRepo>) {
-  const started = repo.start('onboarding', NOW, ZONE);
+type Repo = ReturnType<typeof createSessionRepo>;
+type AnswerInput = Parameters<typeof answer>[4];
+
+/**
+ * Plays a whole session. `plan` answers each step in order (a list of attempts per step, so retries are possible),
+ * then advances it. Returns the final advance status.
+ */
+function playSession(repo: Repo, mode: 'onboarding' | 'daily', plan: (step: { targetText: string }, index: number) => AnswerInput[]) {
+  const started = repo.start(mode, NOW, ZONE);
   if (started.kind !== 'started') throw new Error('expected a session');
   const view = repo.getPractice(started.id, NOW, ZONE);
   if (!view) throw new Error('expected a session');
-  for (const step of view.steps.slice(0, 3)) answer(repo, started.id, step, view.speechLocale, { transcript: step.targetText });
   let status: 'active' | 'completed' = 'active';
-  for (let i = 0; i < view.steps.length; i += 1) status = repo.advance(started.id, NOW, ZONE);
-  return { id: started.id, status };
+  for (const [index, step] of view.steps.entries()) {
+    for (const input of plan(step, index)) answer(repo, started.id, step, view.speechLocale, input);
+    status = repo.advance(started.id, NOW, ZONE);
+  }
+  return { id: started.id, status, steps: view.steps };
+}
+
+function finishOnboarding(repo: Repo) {
+  return playSession(repo, 'onboarding', (step) => [{ transcript: step.targetText }]);
 }
 
 function answer(
@@ -377,18 +620,18 @@ function answer(
   sessionId: string,
   step: { itemId: string; promptType: PromptType; targetText: string; variants: string[]; reading: string | null; romanization: string | null },
   locale: string,
-  input: { transcript: string | null; status?: 'scored' | 'failed' | 'skipped' },
+  input: { transcript: string | null; status?: 'scored' | 'failed' | 'skipped' | 'captured'; inputMode?: InputMode },
 ) {
   const status = input.status ?? 'scored';
-  const mode: InputMode = 'speech';
-  repo.recordAttempt({
+  const mode: InputMode = input.inputMode ?? 'speech';
+  return repo.recordAttempt({
     sessionId,
     itemId: step.itemId,
     promptType: step.promptType,
     inputMode: mode,
     status,
     transcript: input.transcript,
-    error: status === 'failed' ? 'interrupted' : null,
+    error: status === 'failed' ? 'interrupted' : status === 'captured' ? 'noSpeech' : null,
     startedAt: NOW,
     endedAt: NOW + 1,
     hint: null,
@@ -404,4 +647,31 @@ function answer(
           })
         : null,
   });
+}
+
+function answerInput(
+  sessionId: string,
+  step: { itemId: string; promptType: PromptType; targetText: string; variants: string[]; reading: string | null; romanization: string | null },
+  locale: string,
+) {
+  return {
+    sessionId,
+    itemId: step.itemId,
+    promptType: step.promptType,
+    inputMode: 'typed' as InputMode,
+    status: 'scored' as const,
+    transcript: step.targetText,
+    error: null,
+    startedAt: NOW,
+    endedAt: NOW + 1,
+    hint: null,
+    score: textMatch({
+      target: step.targetText,
+      variants: step.variants,
+      transcript: step.targetText,
+      locale,
+      reading: step.reading,
+      romanization: step.romanization,
+    }),
+  };
 }

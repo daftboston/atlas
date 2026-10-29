@@ -13,6 +13,9 @@ export const RATING_HARD_BELOW = 75;
 /** Spoken recall on try 1 can be Easy at or above this. Applied in the scheduler, not the scorer. */
 export const RATING_EASY_AT = 90;
 
+/** learning-loop §5.2. One first try plus up to 2 retries per step. Failed (technical) attempts don't use a try. */
+export const MAX_TRIES_PER_STEP = 3;
+
 export const LISTEN_MAX_DURATION_MS = 8000;
 export const LISTEN_SILENCE_TIMEOUT_MS = 1500;
 

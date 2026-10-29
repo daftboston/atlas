@@ -41,7 +41,7 @@ describe('Review tab', () => {
         start: (mode) => ({ kind: 'started', id: mode === 'review-only' ? 'review-1' : 'daily-1' }),
         touch: () => null,
         getPractice: () => null,
-        recordAttempt() {},
+        recordAttempt: () => 'ignored',
         advance: () => 'active',
         abandon() {},
       });

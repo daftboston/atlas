@@ -1,56 +1,59 @@
 /**
- * Harbor. Atlas is a coast, not a system-gray settings app.
+ * Graphite and silver. A quiet, Apple-like field with one calm accent.
+ * The background is a soft vertical gradient (see src/components/ui/Wash.tsx): near-black graphite in dark mode,
+ * off-white silver in light mode. Glass surfaces sit on it and pick up its tone.
  * Tide is the action color. Coral marks the phrase being learned.
- * Sand, foam, and dusk sit behind the glass so it has color to bend.
- * Ink is the reading color. Light and dark each keep their own orbs.
+ *
+ * Contrast (WCAG 2.x, worst case over the gradient and the card on it), enforced by src/constants/Colors.test.ts:
+ * text and secondaryText, tint, accent, danger, success and warning are all at least 4.5:1 as text in both modes.
  */
-const tideLight = '#0B7C82';
+const tideLight = '#066A70';
 const tideDark = '#5EE0D6';
-const coralLight = '#E15A3A';
+const coralLight = '#A53809';
 const coralDark = '#FF8B6A';
 
 const palette = {
   light: {
-    text: '#14262C',
-    secondaryText: '#3E5C64',
-    background: '#D7F1EE',
+    text: '#111114',
+    secondaryText: '#4A4B52',
+    background: '#EDEDF1',
     card: '#FFFFFFCC',
     fill: '#FFFFFFA6',
     glass: '#FFFFFF38',
-    separator: '#0B7C8233',
+    separator: '#3C3C434D',
     tint: tideLight,
     accent: coralLight,
-    danger: '#D23B2F',
-    success: '#1B7F45',
-    warning: '#C4511A',
-    tabIconDefault: '#5C787E',
+    danger: '#B3231A',
+    success: '#17703C',
+    warning: '#A8430C',
+    tabIconDefault: '#6B6C73',
     tabIconSelected: tideLight,
-    wash: '#D7F1EE',
-    orbTide: '#7EDDD4',
-    orbSand: '#F6D7B0',
-    orbCoral: '#F7B5A0',
-    orbDusk: '#D4C2F4',
+    wash: '#EDEDF1',
+    washTop: '#F7F7F9',
+    washMid: '#EDEDF1',
+    washBottom: '#DFE0E6',
+    sheen: 'rgba(255, 255, 255, 0.7)',
   },
   dark: {
-    text: '#F3FBFA',
-    secondaryText: '#A9C6CB',
-    background: '#071418',
-    card: '#12343ACC',
-    fill: '#12343AA6',
-    glass: '#FFFFFF22',
-    separator: '#5EE0D640',
+    text: '#F5F5F7',
+    secondaryText: '#A8A9B0',
+    background: '#0F1012',
+    card: '#2A2B30CC',
+    fill: '#2A2B30A6',
+    glass: '#FFFFFF1F',
+    separator: '#FFFFFF33',
     tint: tideDark,
     accent: coralDark,
     danger: '#FF6B63',
     success: '#3DDB86',
     warning: '#FFB086',
-    tabIconDefault: '#7E9AA0',
+    tabIconDefault: '#8D8E95',
     tabIconSelected: tideDark,
-    wash: '#071418',
-    orbTide: '#0E6A72',
-    orbSand: '#8A5A32',
-    orbCoral: '#A33B32',
-    orbDusk: '#3A2A62',
+    wash: '#0F1012',
+    washTop: '#1A1B1E',
+    washMid: '#0F1012',
+    washBottom: '#050506',
+    sheen: 'rgba(255, 255, 255, 0.07)',
   },
 };
 
