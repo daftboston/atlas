@@ -14,6 +14,7 @@ import { createSpeechService } from '@/services/speech/registry';
 import type { MockSpeechService } from '@/services/speech/mock';
 import type { ListenResult, SpeechService } from '@/services/speech/types';
 import { getDevScript, scriptedStep } from '@/state/devSpeechScript';
+import { completeBlockedSession, refreshBlocking } from '@/state/blockingStore';
 import { abandonSession, advanceSession, openPractice, readPractice, refreshSessionHome, saveAttempt } from '@/state/sessionStore';
 import { SessionNotActiveError, type PracticeView, type StepView } from '@/data/repositories/sessionRepo';
 
@@ -304,6 +305,8 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
     }
     if (status === 'completed') {
       allowLeave.current = true;
+      // A session started from a blocked app earns its unlock here. Elsewhere this changes nothing.
+      void completeBlockedSession(sessionId);
       router.replace({ pathname: '/practice/summary/[sessionId]', params: { sessionId } });
       return;
     }
@@ -317,6 +320,7 @@ export function PracticeSession({ sessionId }: { sessionId: string }) {
 
   function leave() {
     abandonSession(sessionId);
+    void refreshBlocking();
     allowLeave.current = true;
     setConfirmLeave(false);
     setView(readPractice(sessionId));

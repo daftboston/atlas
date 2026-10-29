@@ -7,13 +7,19 @@ import { PrimaryButton, SecondaryButton } from '@/components/ui/ios';
 import type { PracticeView } from '@/data/repositories/sessionRepo';
 import { RATING_HARD_BELOW } from '@/domain/config';
 import { useSingleTap } from '@/lib/useSingleTap';
+import { blockedAppForSession, useBlocking } from '@/state/blockingStore';
 import { openPractice, refreshSessionHome } from '@/state/sessionStore';
 
 export function SessionSummary({ sessionId }: { sessionId: string }) {
   const router = useRouter();
   const secondary = useThemeColor({}, 'secondaryText');
   const [view] = useState<PracticeView | null>(() => openPractice(sessionId));
-  const finish = useSingleTap(() => router.replace(view?.session.mode === 'onboarding' ? '/(onboarding)/habit' : '/(tabs)/learn'));
+  const { apps } = useBlocking();
+  // A session started from a blocked app ends back at the Unlock tab, where the app shows its new state.
+  const blocked = apps.find((app) => app.sessionId === sessionId) ?? blockedAppForSession(sessionId);
+  const finish = useSingleTap(() =>
+    router.replace(view?.session.mode === 'onboarding' ? '/(onboarding)/habit' : blocked ? '/(tabs)/unlock' : '/(tabs)/learn'),
+  );
 
   useEffect(() => {
     refreshSessionHome();
@@ -50,7 +56,12 @@ export function SessionSummary({ sessionId }: { sessionId: string }) {
       </Text>
       {abandoned ? <Text style={styles.copy}>This session was abandoned. The answers you gave stay saved.</Text> : null}
       <Text style={[styles.note, { color: secondary }]}>{unlockCopy(view)}</Text>
-      <PrimaryButton label={doneLabel} onPress={finish} />
+      {blocked ? (
+        <Text style={styles.copy}>
+          {blocked.state === 'unlocked' ? `${blocked.name} is unlocked.` : `${blocked.name} is still locked.`}
+        </Text>
+      ) : null}
+      <PrimaryButton label={blocked && view.session.mode !== 'onboarding' ? 'Back to blocked apps' : doneLabel} onPress={finish} />
     </ScrollView>
   );
 }

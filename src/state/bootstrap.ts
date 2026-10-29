@@ -6,6 +6,7 @@ import { createLearnerRepository } from '@/data/repositories/learnerRepo';
 import { createReviewRepo } from '@/data/repositories/reviewRepo';
 import { createSessionRepo } from '@/data/repositories/sessionRepo';
 import { createSettingsRepo } from '@/data/repositories/settingsRepo';
+import { createBlockedAppsRepo } from '@/data/repositories/blockedAppsRepo';
 import { createUnlockRepo } from '@/data/repositories/unlockRepo';
 import { DEFAULT_COURSE } from '@/data/seed/courses';
 import { loadSeed } from '@/data/seed/loadSeed';
@@ -16,6 +17,7 @@ import { hydrateLearner } from './learnerStore';
 import { hydrateReview } from './reviewStore';
 import { hydrateSession } from './sessionStore';
 import { hydrateSettings, setKnownSpeechLocale } from './settingsStore';
+import { hydrateBlocking } from './blockingStore';
 import { hydrateUnlock } from './unlockStore';
 
 export type BootstrapState = { ready: boolean; error: Error | null };
@@ -46,7 +48,9 @@ export function useAppBootstrap(): BootstrapState {
         await hydrateLearner(createLearnerRepository(db));
         hydrateReview(createReviewRepo(db));
         hydrateSession(createSessionRepo(db));
-        hydrateUnlock(createUnlockRepo(db));
+        const unlock = createUnlockRepo(db);
+        hydrateUnlock(unlock);
+        hydrateBlocking({ blocked: createBlockedAppsRepo(db), unlock });
         if (!cancelled) setState({ ready: true, error: null });
       } catch (error) {
         if (!cancelled) setState({ ready: false, error: error instanceof Error ? error : new Error(String(error)) });

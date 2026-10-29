@@ -31,7 +31,10 @@ export function createScreenTimeStub(): ScreenTimeService & {
     async getSelection() {
       return selection;
     },
-    async applyShield() {},
+    async applyShield(next: ShieldSelection) {
+      // The demo's "Blocked apps" screen is the stand-in for the system picker, and it hands its choice back here.
+      selection = next;
+    },
     async liftShield(untilMs: number) {
       if (availability !== 'authorized') throw new Error('Screen Time is unavailable');
       emit({ type: 'shieldLifted', until: untilMs });

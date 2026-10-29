@@ -10,6 +10,7 @@ import { SPANISH_ACCENTS } from '@/domain/language/profiles/es';
 import { chooseAccent } from '@/state/accent';
 import { DEV_SCRIPT_NAMES, setDevScript, useDevScript } from '@/state/devSpeechScript';
 import { clearProfile, useLearner } from '@/state/learnerStore';
+import { isBlockingDemoEnabled } from '@/services/screenTime/demo';
 import { setScreenTimeSimulation } from '@/services/screenTime/stub';
 import { refreshSessionHome } from '@/state/sessionStore';
 import { setDailyNewLimit, setDesiredRetention, setSessionSize, useSettings } from '@/state/settingsStore';
@@ -29,7 +30,7 @@ export default function SettingsScreen() {
   const { profile } = useLearner();
   const settings = useSettings();
   const script = useDevScript();
-  const [screenTimeOn, setScreenTimeOn] = useState(false);
+  const [screenTimeOn, setScreenTimeOn] = useState(isBlockingDemoEnabled());
   const accent = settings.speechLocale ?? SPANISH_ACCENTS[0].locale;
 
   return (

@@ -2,7 +2,9 @@ import { useEffect } from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 
 import { Text, useThemeColor, View } from '@/components/Themed';
+import { BlockedAppsSection } from '@/components/blocking/BlockedAppsSection';
 import { Group, PrimaryButton, ScreenTitle, SectionFooter, SectionHeader } from '@/components/ui/ios';
+import { isBlockingDemoEnabled } from '@/services/screenTime/demo';
 import type { UnlockGrantRow } from '@/data/repositories/unlockRepo';
 import { activateGrant, refreshUnlock, useUnlock } from '@/state/unlockStore';
 
@@ -47,7 +49,7 @@ export default function UnlockScreen() {
   const visible = unlock.grants.filter((grant) => grant.status !== 'forfeited');
   const status =
     unlock.availability === 'authorized'
-      ? __DEV__
+      ? isBlockingDemoEnabled()
         ? 'Screen Time is simulated as on.'
         : 'Screen Time is on.'
       : 'Screen Time is unavailable. This timer still runs.';
@@ -73,6 +75,7 @@ export default function UnlockScreen() {
           ))}
         </Group>
       )}
+      {isBlockingDemoEnabled() ? <BlockedAppsSection /> : null}
     </ScrollView>
   );
 }
